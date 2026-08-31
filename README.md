@@ -9,7 +9,7 @@
 ## 快速安装（Debian/Ubuntu x86_64）
 
 ```bash
-sudo dpkg -i daed-rebuilt-kdae/daed_1.28.0-kdae_amd64.deb
+sudo dpkg -i daed_1.28.0-kdae_amd64.deb
 # 浏览器访问 http://<机器IP>:2023 → 初始化账户 → 导入订阅
 ```
 
