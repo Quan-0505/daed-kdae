@@ -19,3 +19,10 @@ sudo dpkg -i daed_1.28.0-kdae_amd64.deb
 - iproute2 ≥ 6.7.0，root 权限
 
 完整安装包见 **Releases**。
+## License
+
+本项目基于 [GNU General Public License v3.0](LICENSE) 发布。
+
+> 说明：本仓库为 daed（ksong daed web）+ dae（kdae 分支）重建安装包的发布仓库；上游组件
+> [dae](https://github.com/daeuniverse/dae) 为 GPL-3.0，[dae-wing](https://github.com/daeuniverse/dae-wing) 为 AGPL-3.0，
+> [daed](https://github.com/ksong008/daed) 为 GPL-3.0，使用与分发请遵循对应许可证。
