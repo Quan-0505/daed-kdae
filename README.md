@@ -1,4 +1,4 @@
-# daed-kdae-installer
+# daed kdae
 
 **daed v1.28.0（ksong daed web，GraphQL）+ olicesx/dae kdae 引擎重建安装包**，完整安装文件已解压入库，可直接下载使用。
 
