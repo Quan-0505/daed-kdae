@@ -48,3 +48,24 @@ sudo dpkg -i daed-rebuilt-kdae/daed_1.28.0-kdae_amd64.deb
 > 说明：本仓库为 daed（ksong daed web）+ dae（kdae 分支）重建安装包的发布仓库；上游组件
 > [dae](https://github.com/daeuniverse/dae) 为 GPL-3.0，[dae-wing](https://github.com/daeuniverse/dae-wing) 为 AGPL-3.0，
 > [daed](https://github.com/ksong008/daed) 为 GPL-3.0，使用与分发请遵循对应许可证。
+
+## OpenWrt 安装包（`openwrt/` 目录）
+
+Go kdae 引擎的 OpenWrt 25.12 apk：
+
+| 设备 | 文件 |
+|---|---|
+| X86 软路由 | `openwrt/daed-kdae-x86.apk` |
+| NanoPi R4S | `openwrt/daed-kdae-r4s.apk` |
+| NanoPi R3S | `openwrt/daed-kdae-r3s.apk` |
+| NanoPi R2S | `openwrt/daed-kdae-r2s.apk` |
+
+```sh
+apk add --allow-untrusted ./daed-kdae-<设备>.apk
+/etc/init.d/daed enable && /etc/init.d/daed start
+# Web 面板: http://<路由器IP>:2023
+```
+
+> ⚠️ **BTF 要求**：Go kdae 引擎需内核 BTF（`ls /sys/kernel/btf/vmlinux` 存在）。
+> OpenWrt 官方固件多数默认**未开启** CONFIG_DEBUG_INFO_BTF——请确认固件支持后再安装，
+> 否则 eBPF 无法加载。R2S/R3S/R4S 同为 arm64（一个二进制通用）。
