@@ -1,71 +1,63 @@
-# daed kdae
+<div align="center">
 
-**daed v1.28.0（ksong daed web，GraphQL）+ olicesx/dae kdae 引擎重建安装包**，完整安装文件已解压入库，可直接下载使用。
+# daed-kdae
 
-## 仓库内容
+**daed（Go 版，kdae 引擎）一体式透明代理安装包**
 
-| 目录/文件 | 说明 |
-|---|---|
-| `daed-rebuilt-kdae/` | ★ 重建版 daed（内嵌 kdae 引擎，x86_64）：`daed-linux-x86_64-kdae`（59.7MB 裸二进制）+ `daed_1.28.0-kdae_amd64.deb`（22.3MB 一键安装包）+ README（含修复记录） |
-| `dae-kdae-20260901/` | 独立 kdae 二进制 `dae-linux-x86_64` + `dae-linux-arm64`（unstable-20260831.r1214.3ffde8）+ geoip.dat/geosite.dat 规则数据 + dae.service/example.dae |
-| `daed-official/` | ksong 官方 installer（v2.2.2-daed-test，参考用）：x86_64 + arm64 的 deb/rpm/pkg.tar.zst/zip + *.dgst 校验文件 |
-| `README-部署指引.md` | 完整部署文档（架构说明、两种部署方式、验证方法） |
-| `checksums.txt` | 全部文件 SHA256 校验和（`sha256sum -c checksums.txt` 验证） |
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-v1.28.0--kdae-orange.svg)](https://github.com/Quan-0505/daed-kdae/releases/tag/v1.28.0-kdae)
 
-> **deb 直链**（Release）：https://github.com/Quan-0505/daed-kdae-installer/releases/download/v1.28.0-kdae/daed_1.28.0-kdae_amd64.deb
+基于 [daed](https://github.com/ksong008/daed)（GraphQL Web）+ [dae-wing](https://github.com/daeuniverse/dae-wing) + [dae](https://github.com/daeuniverse/dae) `kdae` 分支（Go eBPF 引擎）。
 
-## 快速安装（Debian/Ubuntu x86_64）
+</div>
 
-```bash
-# 方式一：Release deb 一键安装
-sudo dpkg -i daed_1.28.0-kdae_amd64.deb
+---
 
-# 方式二：仓库内 deb
-sudo dpkg -i daed-rebuilt-kdae/daed_1.28.0-kdae_amd64.deb
+## ✨ 特性
 
-# 安装后自动启动服务；浏览器访问 http://<机器IP>:2023
-# 首次访问初始化账户 → 登录 → 导入订阅
-# 卸载：sudo dpkg -P daed
-```
+- 🖥 **daed Web 面板** v1.28.0（GraphQL，内嵌二进制）
+- 📌 **kdae 引擎** @ `3ffde84`（sticky-ip / 异步延迟探测 / routing-epoch 竞态修复）
+- 🔄 **reload 双代切换**：IsReload flip handle 修复（透明代理不断流）
 
-## 系统要求
+## 📦 安装包（[v1.28.0-kdae Release](https://github.com/Quan-0505/daed-kdae/releases/tag/v1.28.0-kdae)，deb + apk 统一发布）
 
-- x86_64 Linux（Debian/Ubuntu）
-- 内核 ≥ 5.8 且支持 BTF（`ls /sys/kernel/btf/vmlinux` 存在）
-- iproute2 ≥ 6.7.0
-- root 权限（eBPF 必需）
+| 平台 / 设备 | 文件 | 架构 |
+|---|---|---|
+| Debian/Ubuntu x86_64 | `daed_1.28.0-kdae_amd64.deb` | amd64 |
+| OpenWrt X86 软路由 | `daed-kdae-x86.apk` | x86_64 |
+| NanoPi R4S | `daed-kdae-r4s.apk` | aarch64_cortex-a72 |
+| NanoPi R3S | `daed-kdae-r3s.apk` | aarch64_cortex-a53 |
+| NanoPi R2S | `daed-kdae-r2s.apk` | aarch64_cortex-a53 |
 
-## 版本信息
-
-- Web 面板：ksong008/daed main 分支 v1.28.0（GraphQL 架构）
-- dae 引擎：olicesx/dae `kdae` 分支 @ `3ffde84`（已验证与分支 head 一致）
-- 含 3 组 kdae API 适配补丁（routing-epoch 发布 / IsReload flip handle / 构造器与运行时 API），透明代理实测通过（baidu 直连 0.07s、google/youtube 走代理 1-2s）
-
-## License
-
-本项目基于 [GNU General Public License v3.0](LICENSE) 发布。
-
-> 说明：本仓库为 daed（ksong daed web）+ dae（kdae 分支）重建安装包的发布仓库；上游组件
-> [dae](https://github.com/daeuniverse/dae) 为 GPL-3.0，[dae-wing](https://github.com/daeuniverse/dae-wing) 为 AGPL-3.0，
-> [daed](https://github.com/ksong008/daed) 为 GPL-3.0，使用与分发请遵循对应许可证。
-
-## OpenWrt 安装包（`openwrt/` 目录）
-
-Go kdae 引擎的 OpenWrt 25.12 apk：
-
-| 设备 | 文件 |
-|---|---|
-| X86 软路由 | `openwrt/daed-kdae-x86.apk` |
-| NanoPi R4S | `openwrt/daed-kdae-r4s.apk` |
-| NanoPi R3S | `openwrt/daed-kdae-r3s.apk` |
-| NanoPi R2S | `openwrt/daed-kdae-r2s.apk` |
+## 🚀 快速开始
 
 ```sh
+# Debian / Ubuntu
+sudo dpkg -i daed_1.28.0-kdae_amd64.deb
+# OpenWrt 25.12（apk v2）
 apk add --allow-untrusted ./daed-kdae-<设备>.apk
 /etc/init.d/daed enable && /etc/init.d/daed start
-# Web 面板: http://<路由器IP>:2023
+# Web 面板: http://<机器IP>:2023
 ```
 
-> ⚠️ **BTF 要求**：Go kdae 引擎需内核 BTF（`ls /sys/kernel/btf/vmlinux` 存在）。
-> OpenWrt 官方固件多数默认**未开启** CONFIG_DEBUG_INFO_BTF——请确认固件支持后再安装，
-> 否则 eBPF 无法加载。R2S/R3S/R4S 同为 arm64（一个二进制通用）。
+## 📋 系统要求
+
+x86_64 / aarch64 Linux，内核 ≥ 5.8 且启用 **BTF**；iproute2 ≥ 6.7；root 权限。
+⚠️ OpenWrt 官方固件多默认未开 CONFIG_DEBUG_INFO_BTF——此类设备推荐用 [rust-daed](https://github.com/Quan-0505/rust-daed)。
+
+## 📂 仓库内容
+
+| 目录 / 文件 | 说明 |
+|---|---|
+| `daed-rebuilt-kdae/` | ★ 重建版 daed（内嵌 kdae，x86_64）：二进制 + deb + README（修复记录） |
+| `dae-kdae-20260901/` | 独立 kdae 二进制（x86_64 + arm64）+ geoip/geosite + dae.service/example.dae |
+| `daed-official/` | ksong 官方 installer（v2.2.2-daed-test 参考） |
+| `README-部署指引.md` | 完整部署文档 |
+| `checksums.txt` | 全部文件 SHA256 校验和 |
+
+## 📄 许可
+
+[GNU Affero General Public License v3.0](LICENSE)。上游 daed-wing / dae 生态为 AGPL-3.0。
+
+---
+*Rust 版（DaedNext 引擎）见 [rust-daed](https://github.com/Quan-0505/rust-daed)。*
