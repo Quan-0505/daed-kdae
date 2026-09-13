@@ -3,9 +3,12 @@ name: Repack apk as OpenWrt 25.12 (apk v3)
 # 背景：OpenWrt 25.12 起使用 apk-tools 3.x，包格式为 apk v3（ADB 容器）。
 # 本仓库历史上发布的 *.apk 是 apk v2 格式，在 25.12 上会直接报
 #   ERROR: ...: v2 package format error
-# 本流程把 v2 包解包后用 OpenWrt 25.12 SDK（apk-tools 3）重新打成 v3：
-#   - v3 包以原资产名发布（覆盖），v2 原件保留为 <name>-v2.apk
-#   - 架构统一声明为 aarch64_generic / x86_64，兼容官方镜像与本项目自编译固件
+# 本流程把 v2 包解开后用 OpenWrt 25.12 SDK（apk-tools 3）重新打成 v3：
+#   - v3 以原资产名发布（覆盖），v2 原件保留为 <name>-v2.apk
+#   - 架构统一为 aarch64_generic / x86_64（rockchip/armv8 SDK 的 ARCH），
+#     官方镜像与本项目自编译固件都接受
+#   - v2 的 .post-install / .pre-deinstall 钩子改写成 OpenWrt 包脚本（control 段），
+#     否则这些点文件混在 data 段里会让 apk v3 解包失败
 
 on:
   workflow_dispatch:
@@ -86,19 +89,24 @@ jobs:
           gh release download "${{ inputs.tag }}" -p "$asset" -O v2.apk --clobber
           ls -l v2.apk
           python3 - <<'PY'
-          import tarfile, os
+          import tarfile, os, shutil
           os.makedirs('prebuilt', exist_ok=True)
           with tarfile.open('v2.apk', 'r:*') as tf:
               names = tf.getnames()
               print('tar members:', len(names))
               tf.extractall('prebuilt')
-          for k in ('.PKGINFO',):
-              print('has', k, os.path.exists(os.path.join('prebuilt', k)))
+          # apk v2 的元数据与脚本钩子不属于 data 段，v3 里必须去掉
+          # （脚本改由 Makefile 的 postinst/prerm 定义）
+          for name in os.listdir('prebuilt'):
+              if name.startswith('.') and name not in ('.', '..'):
+                  p = os.path.join('prebuilt', name)
+                  shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
+                  print('removed v2 metadata/hook:', name)
           PY
-          # 去掉 v2 的元数据目录，只保留实际文件树
-          rm -rf prebuilt/.PKGINFO prebuilt/.SIGN.* || true
           find prebuilt -maxdepth 2 | head -20
           test -x prebuilt/usr/bin/daed || { echo 'usr/bin/daed missing'; exit 1; }
+          test -s prebuilt/usr/share/daed/web/index.html || { echo 'webui missing'; exit 1; }
+          test "$(find prebuilt -name ".*" -not -name '.' | wc -l)" = 0 || { echo 'dot files left in data tree'; exit 1; }
           file prebuilt/usr/bin/daed
 
       - name: Build apk v3 with the OpenWrt SDK
@@ -121,13 +129,34 @@ jobs:
           define Package/daed
             SECTION:=net
             CATEGORY:=Network
-            TITLE:=DaeNext rust-native daemon (repacked as apk v3)
+            TITLE:=daed (kdae Go engine) repacked as apk v3
             URL:=https://github.com/Quan-0505/daed-kdae
           endef
 
           define Package/daed/description
             Prebuilt daed (kdae Go engine) with its WebUI, repacked from the apk v2 payload
             with the OpenWrt ${{ inputs.release }} SDK so apk-tools 3 can install it.
+          endef
+
+          # v2 的 .post-install / .pre-deinstall 等价物，放进 control 段
+          define Package/daed/postinst
+          #!/bin/sh
+          [ -n "\$\${IPKG_INSTROOT:-}" ] && exit 0
+          mkdir -p /etc/daed /tmp/log/daed
+          if [ -x /etc/init.d/daed ]; then
+          	/etc/init.d/daed enable 2>/dev/null || true
+          	/etc/init.d/daed restart 2>/dev/null || true
+          fi
+          exit 0
+          endef
+
+          define Package/daed/prerm
+          #!/bin/sh
+          if [ -x /etc/init.d/daed ]; then
+          	/etc/init.d/daed stop 2>/dev/null || true
+          	/etc/init.d/daed disable 2>/dev/null || true
+          fi
+          exit 0
           endef
 
           define Build/Prepare
@@ -162,7 +191,14 @@ jobs:
           echo -n 'magic: '; head -c 4 "$src" | od -An -tx1
           head -c 4 "$src" | grep -q 'ADB' || { echo 'not an apk v3 (ADB) container'; exit 1; }
           rm -rf verify && mkdir -p verify
-          "$apk" extract --allow-untrusted --destination "$PWD/verify" "$src"
+          echo '--- apk extract ---'
+          if ! "$apk" extract --allow-untrusted --destination "$PWD/verify" "$src" 2>&1; then
+            echo '--- apk extract FAILED, diagnostics ---'
+            "$apk" --version || true
+            "$apk" info --allow-untrusted "$src" 2>&1 | head -20 || true
+            exit 1
+          fi
+          find verify -maxdepth 3 | head -20
           test -x verify/usr/bin/daed
           test -s verify/usr/share/daed/web/index.html
           test -x verify/etc/init.d/daed
@@ -184,8 +220,6 @@ jobs:
           set -euo pipefail
           asset="${{ matrix.asset }}"
           v2="$(basename "$asset" .apk)-v2.apk"
-          # 先保留 v2 原件（幂等）
           gh release upload "${{ inputs.tag }}" v2.apk#"$v2" --clobber
-          # 再用 v3 覆盖规范资产名
           gh release upload "${{ inputs.tag }}" "out/$asset" --clobber
           gh release view "${{ inputs.tag }}" --json assets --jq '.assets[] | "\(.name)\t\(.size)"'
