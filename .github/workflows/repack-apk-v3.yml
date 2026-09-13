@@ -86,8 +86,28 @@ jobs:
         run: |
           set -euo pipefail
           asset="${{ matrix.asset }}"
-          gh release download "${{ inputs.tag }}" -p "$asset" -O v2.apk --clobber
-          ls -l v2.apk
+          base="$(basename "$asset" .apk)"
+          # 幂等：优先用已归档的 v2 原件；若取到的最新资产已经是 v3，则跳过重打包。
+          src="$asset"
+          if gh release view "${{ inputs.tag }}" --json assets --jq '.assets[].name' | grep -qx "${base}-v2.apk"; then
+            echo "${base}-v2.apk 已归档，取它作为 v2 源"
+            src="${base}-v2.apk"
+          fi
+          gh release download "${{ inputs.tag }}" -p "$src" -O source.apk --clobber
+          ls -l source.apk
+          magic=$(head -c 4 source.apk | od -An -tx1 | tr -d ' \n')
+          echo "source magic: $magic"
+          if [ "$magic" = "41444264" ]; then
+            echo "SOURCE_ALREADY_V3=1" >> "$GITHUB_ENV"
+            echo '源已是 apk v3（ADB 容器），跳过重打包'
+          else
+            echo "SOURCE_ALREADY_V3=0" >> "$GITHUB_ENV"
+          fi
+          if [ "$magic" = "41444264" ]; then
+            cp source.apk v2.apk || true
+          else
+            cp source.apk v2.apk
+          fi
           python3 - <<'PY'
           import tarfile, os, shutil
           os.makedirs('prebuilt', exist_ok=True)
@@ -119,6 +139,7 @@ jobs:
           file prebuilt/usr/bin/daed
 
       - name: Build apk v3 with the OpenWrt SDK
+        if: env.SOURCE_ALREADY_V3 != '1'
         run: |
           set -euo pipefail
           sdkdir=$(cat sdkdir)
@@ -193,9 +214,13 @@ jobs:
           set -euo pipefail
           sdkdir=$(cat sdkdir)
           apk="$PWD/$sdkdir/staging_dir/host/bin/apk"
-          mapfile -t pkgs < <(find -L "$sdkdir/bin" -type f -name '*.apk' | sort)
-          test "${#pkgs[@]}" -gt 0
-          src="${pkgs[0]}"
+          if [ "${SOURCE_ALREADY_V3:-0}" = 1 ]; then
+            src="$PWD/source.apk"
+          else
+            mapfile -t pkgs < <(find -L "$sdkdir/bin" -type f -name '*.apk' | sort)
+            test "${#pkgs[@]}" -gt 0
+            src="${pkgs[0]}"
+          fi
           echo "built: $src"
           echo -n 'magic: '; head -c 4 "$src" | od -An -tx1
           head -c 4 "$src" | grep -q 'ADB' || { echo 'not an apk v3 (ADB) container'; exit 1; }
@@ -228,7 +253,9 @@ jobs:
         run: |
           set -euo pipefail
           asset="${{ matrix.asset }}"
-          v2="$(basename "$asset" .apk)-v2.apk"
-          gh release upload "${{ inputs.tag }}" v2.apk#"$v2" --clobber
+          base="$(basename "$asset" .apk)"
+          # 每个机型一份 v2 备份，避免多个矩阵任务互相覆盖成同一个 v2.apk
+          cp v2.apk "${base}-v2.apk"
+          gh release upload "${{ inputs.tag }}" "${base}-v2.apk" --clobber
           gh release upload "${{ inputs.tag }}" "out/$asset" --clobber
           gh release view "${{ inputs.tag }}" --json assets --jq '.assets[] | "\(.name)\t\(.size)"'
