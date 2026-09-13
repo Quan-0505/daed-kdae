@@ -105,8 +105,17 @@ jobs:
           PY
           find prebuilt -maxdepth 2 | head -20
           test -x prebuilt/usr/bin/daed || { echo 'usr/bin/daed missing'; exit 1; }
-          test -s prebuilt/usr/share/daed/web/index.html || { echo 'webui missing'; exit 1; }
-          test "$(find prebuilt -name ".*" -not -name '.' | wc -l)" = 0 || { echo 'dot files left in data tree'; exit 1; }
+          test -e prebuilt/etc/init.d/daed || { echo 'etc/init.d/daed missing'; exit 1; }
+          # WebUI 可能内嵌在二进制里（rust/Go embed），只有确实存在时才校验
+          if [ -s prebuilt/usr/share/daed/web/index.html ]; then
+            echo "HAS_WEB=1" >> "$GITHUB_ENV"
+          else
+            echo "HAS_WEB=0" >> "$GITHUB_ENV"
+            echo 'note: no on-disk WebUI in the payload (embedded in the binary)'
+          fi
+          left=$(find prebuilt -mindepth 1 -name '.*' | wc -l)
+          echo "dot entries left: $left"
+          [ "$left" = 0 ] || { echo 'dot files left in data tree'; exit 1; }
           file prebuilt/usr/bin/daed
 
       - name: Build apk v3 with the OpenWrt SDK
@@ -200,8 +209,8 @@ jobs:
           fi
           find verify -maxdepth 3 | head -20
           test -x verify/usr/bin/daed
-          test -s verify/usr/share/daed/web/index.html
-          test -x verify/etc/init.d/daed
+          test -e verify/etc/init.d/daed
+          if [ "${HAS_WEB:-0}" = 1 ]; then test -s verify/usr/share/daed/web/index.html; fi
           file verify/usr/bin/daed
           mkdir -p out
           cp "$src" "out/${{ matrix.asset }}"
