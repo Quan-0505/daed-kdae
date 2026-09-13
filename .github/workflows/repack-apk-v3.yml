@@ -105,7 +105,8 @@ jobs:
           fi
           if [ "$magic" = "41444264" ]; then
             cp source.apk v2.apk
-            echo '源已是 apk v3，跳过解包与重打包'
+            echo "SKIP_V2_ARCHIVE=1" >> "$GITHUB_ENV"
+            echo '源已是 apk v3，跳过解包与重打包，也不再伪造 -v2 归档'
             exit 0
           fi
           cp source.apk v2.apk
@@ -255,8 +256,13 @@ jobs:
           set -euo pipefail
           asset="${{ matrix.asset }}"
           base="$(basename "$asset" .apk)"
-          # 每个机型一份 v2 备份，避免多个矩阵任务互相覆盖成同一个 v2.apk
-          cp v2.apk "${base}-v2.apk"
-          gh release upload "${{ inputs.tag }}" "${base}-v2.apk" --clobber
+          # 每个机型一份 v2 备份，避免多个矩阵任务互相覆盖成同一个 v2.apk。
+          # 源本来就是 v3 时不生成归档（否则会把 v3 内容挂到 -v2 名下，误导使用者）。
+          if [ "${SKIP_V2_ARCHIVE:-0}" = 1 ]; then
+            echo "${base}-v2.apk 跳过：原始 v2 载荷不可得（当前规范资产本就已是 v3）"
+          else
+            cp v2.apk "${base}-v2.apk"
+            gh release upload "${{ inputs.tag }}" "${base}-v2.apk" --clobber
+          fi
           gh release upload "${{ inputs.tag }}" "out/$asset" --clobber
           gh release view "${{ inputs.tag }}" --json assets --jq '.assets[] | "\(.name)\t\(.size)"'
