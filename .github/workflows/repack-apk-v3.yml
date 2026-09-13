@@ -104,10 +104,11 @@ jobs:
             echo "SOURCE_ALREADY_V3=0" >> "$GITHUB_ENV"
           fi
           if [ "$magic" = "41444264" ]; then
-            cp source.apk v2.apk || true
-          else
             cp source.apk v2.apk
+            echo '源已是 apk v3，跳过解包与重打包'
+            exit 0
           fi
+          cp source.apk v2.apk
           python3 - <<'PY'
           import tarfile, os, shutil
           os.makedirs('prebuilt', exist_ok=True)
