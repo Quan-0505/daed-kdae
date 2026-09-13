@@ -34,7 +34,7 @@
 ```sh
 # Debian / Ubuntu
 sudo dpkg -i daed_1.28.0-kdae_amd64.deb
-# OpenWrt 25.12（apk v2）
+# OpenWrt 25.12（apk v3 / apk-tools 3）
 apk add --allow-untrusted ./daed-kdae-<设备>.apk
 /etc/init.d/daed enable && /etc/init.d/daed start
 # Web 面板: http://<机器IP>:2023
@@ -43,7 +43,18 @@ apk add --allow-untrusted ./daed-kdae-<设备>.apk
 ## 📋 系统要求
 
 x86_64 / aarch64 Linux，内核 ≥ 5.8 且启用 **BTF**；iproute2 ≥ 6.7；root 权限。
-⚠️ OpenWrt 官方固件多默认未开 CONFIG_DEBUG_INFO_BTF——此类设备推荐用 [rust-daed](https://github.com/Quan-0505/rust-daed)。
+
+dae 的 eBPF 数据面还要求内核开启 **veth**、**clsact**（`NET_SCH_INGRESS` / `NET_CLS_ACT` / `NET_CLS_BPF`），
+并需要宿主工具 `tc` / `bpftool` / `ipset`（OpenWrt 上：`apk add tc-full bpftool-minimal ip-full ipset`）。
+
+⚠️ **BTF 是两者共同前提**：Go 版（kdae）与 Rust 版（[rust-daed](https://github.com/Quan-0505/rust-daed)）都依赖内核 BTF 与 veth/clsact。
+OpenWrt 官方固件多默认未开 `CONFIG_DEBUG_INFO_BTF`，这类设备两者都无法启动——需要自编译内核，或直接使用已启用的固件
+[Quan-0505/OpenWrt](https://github.com/Quan-0505/OpenWrt)（该固件已内置 BTF / veth / clsact 与宿主工具）。
+
+### ⚠️ 包格式兼容性（重要）
+
+OpenWrt **25.12 起使用 apk-tools 3.x**，包格式为 **apk v3**（ADB 容器）。本 Release 的 `daed-kdae-*.apk` 目前是 **apk v2 格式**，
+在 apk-tools 3 上安装会报 `v2 package format error`；v3 重打包完成前，OpenWrt 25.12 请使用上面的内置固件，或 Debian/Ubuntu 用 `.deb`。
 
 ## 📂 仓库内容
 
