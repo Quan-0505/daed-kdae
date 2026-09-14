@@ -16,7 +16,7 @@
 ## ✨ 特性
 
 - 🖥 **daed Web 面板** v1.28.0（GraphQL，内嵌二进制）
-- 📌 **kdae 引擎** @ `3ffde84`（sticky-ip / 异步延迟探测 / routing-epoch 竞态修复）
+- 📌 **kdae 引擎** @ `ee4ce27`（2026-09-13，kdae 分支 head；解析失败存活 / 启动等网络有界 / reload 竞态修复 / 路由操作数校验）
 - 🔄 **reload 双代切换**：IsReload flip handle 修复（透明代理不断流）
 
 ## 📦 安装包（[v1.28.0-kdae Release](https://github.com/Quan-0505/daed-kdae/releases/tag/v1.28.0-kdae)，deb + apk 统一发布）
