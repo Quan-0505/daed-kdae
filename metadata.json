@@ -1,0 +1,8 @@
+{
+  "name": "daed-kdae",
+  "description": "Web dashboard and transparent proxy controller for daed and kdae eBPF routing engine",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

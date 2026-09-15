@@ -1,0 +1,161 @@
+{
+  "users": [
+    {
+      "username": "admin",
+      "password": "password",
+      "name": "Administrator",
+      "avatar": ""
+    }
+  ],
+  "storage": {
+    "mode": "rule",
+    "defaultConfigID": "config-1",
+    "defaultRoutingID": "routing-1",
+    "defaultDNSID": "dns-1",
+    "defaultGroupID": "group-1"
+  },
+  "logLevel": "info",
+  "logSettings": {
+    "maxEntries": 10000,
+    "maxBytes": 52428800,
+    "minMaxEntries": 500,
+    "maxMaxEntries": 50000,
+    "minMaxBytes": 5242880,
+    "maxMaxBytes": 209715200
+  },
+  "logs": [
+    {
+      "id": 1,
+      "ts": "2026-09-15T00:00:01Z",
+      "level": "info",
+      "message": "daed daemon initialized with kdae eBPF engine",
+      "fields": {
+        "phase": "startup",
+        "engine": "kdae@3ffde84"
+      }
+    },
+    {
+      "id": 2,
+      "ts": "2026-09-15T00:00:02Z",
+      "level": "info",
+      "message": "eBPF cgroup & tc hooks attached successfully",
+      "fields": {
+        "bpf": "loaded",
+        "mode": "netkit"
+      }
+    }
+  ],
+  "configs": [
+    {
+      "id": 1,
+      "name": "default",
+      "selected": true,
+      "global": "global {}",
+      "parsedGlobal": {
+        "logLevel": "info",
+        "tproxyPort": 12345,
+        "allowInsecure": false,
+        "checkInterval": "30s",
+        "checkTolerance": "50ms",
+        "lanInterface": [],
+        "wanInterface": [
+          "auto"
+        ],
+        "udpCheckDns": [
+          "dns.google.com:53",
+          "8.8.8.8",
+          "2001:4860:4860::8888"
+        ],
+        "tcpCheckUrl": [
+          "http://cp.cloudflare.com",
+          "1.1.1.1",
+          "2606:4700:4700::1111"
+        ],
+        "fallbackResolver": "",
+        "dialMode": "domain",
+        "tcpCheckHttpMethod": "HEAD"
+      }
+    }
+  ],
+  "dnss": [
+    {
+      "id": 1,
+      "name": "default",
+      "selected": true,
+      "parsedDns": {
+        "string": "# Default DNS configuration\nupstream {\n  googledns: 'tcp+udp://dns.google.com:53'\n  alidns: 'udp://dns.alidns.com:53'\n}\nrouting {\n  request {\n    qname(geosite:cn) -> alidns\n    fallback: googledns\n  }\n}"
+      }
+    }
+  ],
+  "routings": [
+    {
+      "id": 1,
+      "name": "default",
+      "selected": true,
+      "parsedRouting": {
+        "string": "# Default routing rules\npname(NetworkManager, systemd-resolved) -> must_direct\ndip(geoip:private) -> direct\ndip(geoip:cn) -> direct\ndomain(geosite:cn) -> direct\nfallback: proxy"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "name": "Proxy",
+      "policy": "min_moving_avg",
+      "policyParams": [],
+      "nodes": [
+        {
+          "id": 1,
+          "name": "Tokyo-01",
+          "link": "vmess://eyJhZGQiOiJ0b2t5by5leGFtcGxlLmNvbSIsInBzIjoiVG9reW8tMDEifQ==",
+          "address": "tokyo.example.com:443",
+          "protocol": "vmess",
+          "tag": "JP-Tokyo-Fast"
+        },
+        {
+          "id": 2,
+          "name": "Singapore-01",
+          "link": "trojan://password@sg.example.com:443",
+          "address": "sg.example.com:443",
+          "protocol": "trojan",
+          "tag": "SG-Fast"
+        }
+      ],
+      "subscriptions": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Tokyo-01",
+      "link": "vmess://eyJhZGQiOiJ0b2t5by5leGFtcGxlLmNvbSIsInBzIjoiVG9reW8tMDEifQ==",
+      "address": "tokyo.example.com:443",
+      "protocol": "vmess",
+      "tag": "JP-Tokyo-Fast"
+    },
+    {
+      "id": 2,
+      "name": "Singapore-01",
+      "link": "trojan://password@sg.example.com:443",
+      "address": "sg.example.com:443",
+      "protocol": "trojan",
+      "tag": "SG-Fast"
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": 1,
+      "tag": "Default Provider",
+      "status": "ok",
+      "link": "https://example.com/api/v1/client/subscribe?token=demo",
+      "info": "upload=10737418240; download=53687091200; total=107374182400; expire=1798761600",
+      "updatedAt": "2026-09-15T07:09:02.322Z",
+      "cronExp": "0 0 * * *",
+      "cronEnable": true,
+      "nodes": {
+        "items": []
+      },
+      "nodeCount": 2
+    }
+  ]
+}
