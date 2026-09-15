@@ -134,6 +134,17 @@ jobs:
           find prebuilt -maxdepth 2 | head -20
           test -x prebuilt/usr/bin/daed || { echo 'usr/bin/daed missing'; exit 1; }
           test -e prebuilt/etc/init.d/daed || { echo 'etc/init.d/daed missing'; exit 1; }
+          # OpenWrt 是 musl：预编译二进制必须静态链接，否则 SDK 会以
+          # "Package daed is missing dependencies for the following libraries: libc.so.6" 失败。
+          # 提前给出明确报错，避免只看到 SDK 的晦涩信息。
+          if ldd prebuilt/usr/bin/daed >/dev/null 2>&1; then
+            echo 'ERROR: usr/bin/daed 是动态链接，OpenWrt(musl) 无法打包。'
+            echo '       请用 CGO_ENABLED=0 重新构建（wing 使用纯 Go 的 glebarez/sqlite，无需 CGO）。'
+            echo '       示例: CGO_ENABLED=0 GOOS=linux GOARCH=<arch> make ... bundle'
+            ldd prebuilt/usr/bin/daed | head -5 || true
+            exit 1
+          fi
+          echo 'static link check: OK'
           # WebUI 可能内嵌在二进制里（rust/Go embed），只有确实存在时才校验
           if [ -s prebuilt/usr/share/daed/web/index.html ]; then
             echo "HAS_WEB=1" >> "$GITHUB_ENV"
