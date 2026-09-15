@@ -38,23 +38,27 @@
 
 | 平台 / 设备 | OpenWrt 25.12+ (apk v3) | OpenWrt 24.x/23.x/Alpine (apk v2) | 架构 |
 |---|---|---|---|
-| Debian/Ubuntu x86_64 | - | `daed_2.2.2-kdae_amd64.deb` (dpkg) | amd64 |
-| OpenWrt X86 软路由 | `daed-kdae-x86-v3.apk` | `daed-kdae-x86-v2.apk` | x86_64 |
-| NanoPi R4S | `daed-kdae-r4s-v3.apk` | `daed-kdae-r4s-v2.apk` | aarch64_generic |
-| NanoPi R3S | `daed-kdae-r3s-v3.apk` | `daed-kdae-r3s-v2.apk` | aarch64_generic |
-| NanoPi R2S | `daed-kdae-r2s-v3.apk` | `daed-kdae-r2s-v2.apk` | aarch64_generic |
+| Debian/Ubuntu x86_64 (SSE4.2/v2) | - | `daed-kdae_2.2.2-linux-x86_64_v2_sse.deb` | x86_64 |
+| Debian/Ubuntu x86_64 (AVX2/v3) | - | `daed-kdae_2.2.2-linux-x86_64_v3_avx2.deb` | x86_64 |
+| OpenWrt X86 软路由 | `daed-kdae_2.2.2-x86_64-v3.apk` | `daed-kdae_2.2.2-x86_64-v2.apk` | x86_64 |
+| NanoPi R4S | `daed-kdae_2.2.2-R4S-v3.apk` | `daed-kdae_2.2.2-R4S-v2.apk` | aarch64_generic |
+| NanoPi R3S | `daed-kdae_2.2.2-R3S-v3.apk` | `daed-kdae_2.2.2-R3S-v2.apk` | aarch64_generic |
+| NanoPi R2S | `daed-kdae_2.2.2-R2S-v3.apk` | `daed-kdae_2.2.2-R2S-v2.apk` | aarch64_generic |
 
 ## 🚀 快速开始
 
 ```sh
-# Debian / Ubuntu
-sudo dpkg -i daed_2.2.2-kdae_amd64.deb
+# Debian / Ubuntu (标准 x86_64 SSE4.2，老旧 CPU 通用)
+sudo dpkg -i daed-kdae_2.2.2-linux-x86_64_v2_sse.deb
+
+# Debian / Ubuntu (现代 x86_64 AVX2，推荐 Intel 4代+ / AMD Zen+)
+sudo dpkg -i daed-kdae_2.2.2-linux-x86_64_v3_avx2.deb
 
 # OpenWrt 25.12（apk v3 / apk-tools 3）
-apk add --allow-untrusted ./daed-kdae-<设备>-v3.apk
+apk add --allow-untrusted ./daed-kdae_2.2.2-<设备>-v3.apk
 
 # OpenWrt 24.x / 23.x / Alpine（apk v2）
-apk add --allow-untrusted ./daed-kdae-<设备>-v2.apk
+apk add --allow-untrusted ./daed-kdae_2.2.2-<设备>-v2.apk
 
 # 启用并启动服务
 /etc/init.d/daed enable && /etc/init.d/daed start
@@ -80,19 +84,20 @@ OpenWrt **25.12 起使用 apk-tools 3.x**，包格式为 **apk v3**（ADB 容器
 
 ```sh
 # OpenWrt 25.12+ (apk v3)
-scp daed-kdae-r4s-v3.apk root@192.168.2.1:/tmp/
-ssh root@192.168.2.1 'apk add --allow-untrusted /tmp/daed-kdae-r4s-v3.apk'
+scp daed-kdae_2.2.2-R4S-v3.apk root@192.168.2.1:/tmp/
+ssh root@192.168.2.1 'apk add --allow-untrusted /tmp/daed-kdae_2.2.2-R4S-v3.apk'
 
 # OpenWrt 24.x / 23.x / Alpine (apk v2)
-scp daed-kdae-r4s-v2.apk root@192.168.2.1:/tmp/
-ssh root@192.168.2.1 'apk add --allow-untrusted /tmp/daed-kdae-r4s-v2.apk'
+scp daed-kdae_2.2.2-R4S-v2.apk root@192.168.2.1:/tmp/
+ssh root@192.168.2.1 'apk add --allow-untrusted /tmp/daed-kdae_2.2.2-R4S-v2.apk'
 ```
 
-| 目标环境 | 包管理 | 用哪个文件 |
+| 目标环境 | 包管理 | 推荐安装包 |
 |---|---|---|
-| OpenWrt 25.12+（apk-tools 3） | `apk` | ✅ `daed-kdae-<device>-v3.apk`（apk v3，ADB 容器） |
-| OpenWrt 24.x / 23.x / Alpine | `apk` | ✅ `daed-kdae-<device>-v2.apk`（apk v2，传统 tar 格式） |
-| Debian / Ubuntu | `dpkg` | ✅ `daed_2.2.2-kdae_amd64.deb` |
+| OpenWrt 25.12+（apk-tools 3） | `apk` | ✅ `daed-kdae_2.2.2-<device>-v3.apk`（apk v3，ADB 容器格式） |
+| OpenWrt 24.x / 23.x / Alpine | `apk` | ✅ `daed-kdae_2.2.2-<device>-v2.apk`（apk v2，传统 tar 格式） |
+| Debian / Ubuntu (标准/老旧 x86_64) | `dpkg` | ✅ `daed-kdae_2.2.2-linux-x86_64_v2_sse.deb` |
+| Debian / Ubuntu (现代 x86_64 AVX2) | `dpkg` | ✅ `daed-kdae_2.2.2-linux-x86_64_v3_avx2.deb` |
 
 已在真机验证（NanoPi R4S / OpenWrt 25.12.5 / apk-tools 3.0.5 / `aarch64_generic`）：
 
