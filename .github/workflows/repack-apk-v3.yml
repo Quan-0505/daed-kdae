@@ -1,20 +1,23 @@
 name: Repack apk as OpenWrt 25.12 (apk v3)
 
 # 背景：OpenWrt 25.12 起使用 apk-tools 3.x，包格式为 apk v3（ADB 容器）。
-# 本仓库历史上发布的 *.apk 是 apk v2 格式，在 25.12 上会直接报
-#   ERROR: ...: v2 package format error
-# 本流程把 v2 包解开后用 OpenWrt 25.12 SDK（apk-tools 3）重新打成 v3：
+# 仓库 openwrt/*.apk 维护的是 apk v2 载荷；本流程把它解开后用 OpenWrt 25.12 SDK
+# （apk-tools 3）重新打成 v3，并更新 Release 资产（即"更新 APK 后同步刷新 Release 列表"）：
 #   - v3 以原资产名发布（覆盖），v2 原件保留为 <name>-v2.apk
 #   - 架构统一为 aarch64_generic / x86_64（rockchip/armv8 SDK 的 ARCH），
 #     官方镜像与本项目自编译固件都接受
 #   - v2 的 .post-install / .pre-deinstall 钩子改写成 OpenWrt 包脚本（control 段），
 #     否则这些点文件混在 data 段里会让 apk v3 解包失败
+#
+# 触发方式：
+#   1) 自动：推送到 main 且改动 openwrt/**.apk（更新 APK 即自动刷新 Release）
+#   2) 手动：workflow_dispatch，可选任意分支/标签（便于 PR 分支先行验证发布）
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 存放 v2 apk 的 release tag
+        description: 目标 release tag（资产将更新到此处）
         required: true
         default: v1.28.0-kdae
       version:
@@ -25,6 +28,11 @@ on:
         description: 使用的 OpenWrt 稳定版分支（取该分支最新小版本）
         required: true
         default: '25.12'
+  push:
+    branches: [main]
+    paths:
+      - 'openwrt/**.apk'
+      - '.github/workflows/repack-apk-v3.yml'
 
 permissions:
   contents: write
@@ -32,6 +40,11 @@ permissions:
 concurrency:
   group: repack-apk-v3
   cancel-in-progress: false
+
+env:
+  TARGET_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || 'v1.28.0-kdae' }}
+  PKG_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '1.28.0' }}
+  OWRT_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.release || '25.12' }}
 
 jobs:
   repack:
@@ -62,11 +75,11 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y zstd python3 libncurses-dev
 
-      - name: Download OpenWrt ${{ inputs.release }} SDK
+      - name: Download OpenWrt ${{ env.OWRT_RELEASE }} SDK
         run: |
           set -euo pipefail
           rel=$(curl -fLsS "https://downloads.openwrt.org/releases/" \
-            | grep -oE "href=\"${{ inputs.release }}\.[0-9]+/\"" | cut -d '"' -f2 | tr -d / | sort -Vu | tail -1)
+            | grep -oE "href=\"${{ env.OWRT_RELEASE }}\.[0-9]+/\"" | cut -d '"' -f2 | tr -d / | sort -Vu | tail -1)
           test -n "$rel"
           echo "OpenWrt release: $rel"
           tgt="${{ matrix.sdk_target }}"
@@ -80,20 +93,13 @@ jobs:
           cat sdkdir
           echo "OPENWRT_RELEASE=$rel" >> "$GITHUB_ENV"
 
-      - name: Fetch and unpack the apk v2 payload
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Use the repo apk as the v2 payload source
         run: |
           set -euo pipefail
           asset="${{ matrix.asset }}"
-          base="$(basename "$asset" .apk)"
-          # 幂等：优先用已归档的 v2 原件；若取到的最新资产已经是 v3，则跳过重打包。
-          src="$asset"
-          if gh release view "${{ inputs.tag }}" --json assets --jq '.assets[].name' | grep -qx "${base}-v2.apk"; then
-            echo "${base}-v2.apk 已归档，取它作为 v2 源"
-            src="${base}-v2.apk"
-          fi
-          gh release download "${{ inputs.tag }}" -p "$src" -O source.apk --clobber
+          src="openwrt/${asset}"
+          test -f "$src" || { echo "缺少 $src"; exit 1; }
+          cp "$src" source.apk
           ls -l source.apk
           magic=$(head -c 4 source.apk | od -An -tx1 | tr -d ' \n')
           echo "source magic: $magic"
@@ -128,6 +134,17 @@ jobs:
           find prebuilt -maxdepth 2 | head -20
           test -x prebuilt/usr/bin/daed || { echo 'usr/bin/daed missing'; exit 1; }
           test -e prebuilt/etc/init.d/daed || { echo 'etc/init.d/daed missing'; exit 1; }
+          # OpenWrt 是 musl：预编译二进制必须静态链接，否则 SDK 会以
+          # "Package daed is missing dependencies for the following libraries: libc.so.6" 失败。
+          # 提前给出明确报错，避免只看到 SDK 的晦涩信息。
+          if ldd prebuilt/usr/bin/daed >/dev/null 2>&1; then
+            echo 'ERROR: usr/bin/daed 是动态链接，OpenWrt(musl) 无法打包。'
+            echo '       请用 CGO_ENABLED=0 重新构建（wing 使用纯 Go 的 glebarez/sqlite，无需 CGO）。'
+            echo '       示例: CGO_ENABLED=0 GOOS=linux GOARCH=<arch> make ... bundle'
+            ldd prebuilt/usr/bin/daed | head -5 || true
+            exit 1
+          fi
+          echo 'static link check: OK'
           # WebUI 可能内嵌在二进制里（rust/Go embed），只有确实存在时才校验
           if [ -s prebuilt/usr/share/daed/web/index.html ]; then
             echo "HAS_WEB=1" >> "$GITHUB_ENV"
@@ -152,7 +169,7 @@ jobs:
           include \$(TOPDIR)/rules.mk
 
           PKG_NAME:=daed-kdae
-          PKG_VERSION:=${{ inputs.version }}
+          PKG_VERSION:=${{ env.PKG_VERSION }}
           PKG_RELEASE:=1
           PKGARCH:=${{ matrix.pkgarch }}
 
@@ -167,7 +184,7 @@ jobs:
 
           define Package/daed/description
             Prebuilt daed (kdae Go engine) with its WebUI, repacked from the apk v2 payload
-            with the OpenWrt ${{ inputs.release }} SDK so apk-tools 3 can install it.
+            with the OpenWrt ${{ env.OWRT_RELEASE }} SDK so apk-tools 3 can install it.
           endef
 
           # v2 的 .post-install / .pre-deinstall 等价物，放进 control 段
@@ -262,7 +279,10 @@ jobs:
             echo "${base}-v2.apk 跳过：原始 v2 载荷不可得（当前规范资产本就已是 v3）"
           else
             cp v2.apk "${base}-v2.apk"
-            gh release upload "${{ inputs.tag }}" "${base}-v2.apk" --clobber
+            gh release upload "${{ env.TARGET_TAG }}" "${base}-v2.apk" --clobber
           fi
-          gh release upload "${{ inputs.tag }}" "out/$asset" --clobber
-          gh release view "${{ inputs.tag }}" --json assets --jq '.assets[] | "\(.name)\t\(.size)"'
+          # 规范资产（无后缀）保持兼容；同时额外提供显式的 -v3.apk，
+          # 让使用者能明确按格式选择：<base>-v2.apk（apk v2）/ <base>-v3.apk（apk v3）。
+          cp "out/$asset" "out/${base}-v3.apk"
+          gh release upload "${{ env.TARGET_TAG }}" "out/$asset" "out/${base}-v3.apk" --clobber
+          gh release view "${{ env.TARGET_TAG }}" --json assets --jq '.assets[] | "\(.name)\t\(.size)"'

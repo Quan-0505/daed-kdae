@@ -2,12 +2,32 @@
 
 | 项目 | 值 |
 |---|---|
-| 构建日期 | 2026-09-01（Debian 13 机器 192.168.5.44 实机构建） |
+| 构建日期 | **2026-09-13**（Debian 13 机器 192.168.5.44 实机构建；上一版 2026-09-01） |
 | 版本 | **daed v1.28.0-kdae**（`--version` 输出） |
 | Web 面板 | **ksong008/daed main 分支**（v1.28.0，GraphQL 架构，最新） |
-| dae 引擎 | **olicesx/dae `kdae` 分支 @ `3ffde84`**（2026-09-01 更新，`fix(cmd,trace): close reload races and bound trace skb tracking`；已验证与 olicesx/kdae 分支 head 完全一致） |
+| dae 引擎 | **olicesx/dae `kdae` 分支 @ `ee4ce27`**（2026-09-13，`test(control): satisfy errcheck in the janitor boundary test`；kdae 分支 head） |
 | 后端 | daeuniverse/dae-wing main（dc50308894）+ kdae API 适配补丁 |
-| 架构 | linux/amd64（x86_64），59.7 MB（含内嵌 web UI + eBPF 程序） |
+| 架构 | linux/amd64（x86_64），63.3 MB（60.3 MiB，含内嵌 web UI + eBPF 程序） |
+| 依赖 | outbound fork → `olicesx/outbound v0.0.0-sticky-ip.0.20260912070929-ebd5cd55cbda`；新增 `olicesx/quic-go` replace；Go 1.26.3 |
+
+## 本版（2026-09-13，kdae `ee4ce27`）更新要点
+
+引擎从 `3ffde84` 升到 `ee4ce27`（kdae 分支 500+ 提交），重点：域名解析失败存活（`bound datapath name resolution and survive its failure`）、启动等网络有界（`bound the startup network wait`）、reload 竞态修复、路由操作数校验（`reject unknown l4proto and ipversion operands`）、bpf pin / 绑定状态修复。
+
+**本次升级需要同步适配的 5 处**（缺一不可）：
+
+1. **bpf headers 子模块**：`control/kern/headers`、`trace/kern/headers` 必须存在（浅克隆/换源后易丢）
+2. **`go mod tidy`**：新 kdae 依赖变化
+3. **outbound fork 版本**：`replace github.com/daeuniverse/outbound => github.com/olicesx/outbound v0.0.0-sticky-ip.0.20260912070929-ebd5cd55cbda`（旧版会报 `protocol.SetDatapathResolver` / `netproxy.WriteDeadlineClosesSession` / `protocol.ErrDomainResolution` 未定义）
+4. **`olicesx/quic-go` replace** 新增
+5. **`wing/dae/utils.go`**：`daeConfig.FunctionOrStringToFunction` → **`daeConfig.ParseFunctionOrString`**（新 kdae 重命名且返回 error）
+
+## 运行时验证（2026-09-13，构建机 192.168.5.44 实测）
+
+- `daed --version` → `daed version v1.28.0-kdae`
+- `daed run -c <cfg>` → **`Loaded eBPF programs and maps`** + `Listen on http://127.0.0.1:2023`（面板监听正常）
+- 独立 dae（`dae-kdae-20260913/`）同源实跑 → **`Loaded eBPF programs and maps`** + `Bind to WAN: enp1s0`
+- SHA256：`daed-linux-x86_64-kdae` = `0f87bff14f64a49b1d6f6455c1751bacc559afe186dee62969116eec8c576ae8`；`daed_1.28.0-kdae_amd64.deb` = `e2a04d9221e6f768ae837c5d7bc7f4df8687ef68b5aebd0fec796981d96a8012`
 
 ## ⚠️ 重要：为什么是 v1.28.0（main 分支 web）而不是 v2.2.2-daed-test
 
@@ -19,7 +39,7 @@
 
 **解决方案（本构建采用）**：daed **main 分支的 web（v1.28.0，GraphQL 架构）** 与旧架构 wing + kdae 完全兼容——51 个 GraphQL 操作全部实测通过。即：**最新版 ksong daed web + kdae 引擎**。
 
-## 运行时验证（已在 192.168.50.5 完整实测，2026-09-01）
+## 运行时验证（上一版 2026-09-01 / kdae `3ffde84`，已在 192.168.50.5 完整实测）
 
 - `daed --version` → `daed version v1.28.0-kdae`
 - systemd `daed.service` **active (running)**，开机自启
