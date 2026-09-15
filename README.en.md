@@ -50,21 +50,21 @@ Compared with the original upstream dae, the [olicesx/dae `kdae` branch](https:/
 ## 🚀 Quick start
 
 ```sh
-# Debian / Ubuntu (标准 x86_64 SSE4.2，老旧 CPU 通用)
+# Debian / Ubuntu (standard x86_64 SSE4.2, generic for older CPUs)
 sudo dpkg -i daed-kdae_2.2.2-linux-x86_64_v2_sse.deb
 
-# Debian / Ubuntu (现代 x86_64 AVX2，推荐 Intel 4代+ / AMD Zen+)
+# Debian / Ubuntu (modern x86_64 AVX2, recommended for Intel 4th gen+ / AMD Zen+)
 sudo dpkg -i daed-kdae_2.2.2-linux-x86_64_v3_avx2.deb
 
-# OpenWrt 25.12（apk v3 / apk-tools 3）
-apk add --allow-untrusted ./daed-kdae_2.2.2-<设备>-v3.apk
+# OpenWrt 25.12 (apk v3 / apk-tools 3)
+apk add --allow-untrusted ./daed-kdae_2.2.2-<device>-v3.apk
 
-# OpenWrt 24.x / 23.x / Alpine（apk v2）
-apk add --allow-untrusted ./daed-kdae_2.2.2-<设备>-v2.apk
+# OpenWrt 24.x / 23.x / Alpine (apk v2)
+apk add --allow-untrusted ./daed-kdae_2.2.2-<device>-v2.apk
 
-# 启用并启动服务
+# enable and start the service
 /etc/init.d/daed enable && /etc/init.d/daed start
-# Web 面板: http://<机器IP>:2023
+# Web panel: http://<machine-IP>:2023
 ```
 
 ## 📋 System requirements
