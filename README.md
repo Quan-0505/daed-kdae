@@ -5,7 +5,7 @@
 **daed（Go 版，kdae 引擎）一体式透明代理安装包**
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v1.28.0--kdae-orange.svg)](https://github.com/Quan-0505/daed-kdae/releases/tag/v1.28.0-kdae)
+[![Version](https://img.shields.io/badge/version-v2.2.2--kdae-orange.svg)](https://github.com/Quan-0505/daed-kdae/releases/tag/v2.2.2-kdae)
 
 基于 [daed](https://github.com/ksong008/daed)（GraphQL Web）+ [dae-wing](https://github.com/daeuniverse/dae-wing) + [dae](https://github.com/daeuniverse/dae) `kdae` 分支（Go eBPF 引擎）。
 
@@ -19,11 +19,11 @@
 - 📌 **kdae 引擎** @ `3ffde84`（sticky-ip / 异步延迟探测 / routing-epoch 竞态修复）
 - 🔄 **reload 双代切换**：IsReload flip handle 修复（透明代理不断流）
 
-## 📦 安装包（[v1.28.0-kdae Release](https://github.com/Quan-0505/daed-kdae/releases/tag/v1.28.0-kdae)，deb + apk 统一发布）
+## 📦 安装包（[v2.2.2-kdae Release](https://github.com/Quan-0505/daed-kdae/releases/tag/v2.2.2-kdae)，deb + apk 统一发布）
 
 | 平台 / 设备 | OpenWrt 25.12+ (apk v3) | OpenWrt 24.x/23.x/Alpine (apk v2) | 架构 |
 |---|---|---|---|
-| Debian/Ubuntu x86_64 | - | `daed_1.28.0-kdae_amd64.deb` (dpkg) | amd64 |
+| Debian/Ubuntu x86_64 | - | `daed_2.2.2-kdae_amd64.deb` (dpkg) | amd64 |
 | OpenWrt X86 软路由 | `daed-kdae-x86-v3.apk` | `daed-kdae-x86-v2.apk` | x86_64 |
 | NanoPi R4S | `daed-kdae-r4s-v3.apk` | `daed-kdae-r4s-v2.apk` | aarch64_generic |
 | NanoPi R3S | `daed-kdae-r3s-v3.apk` | `daed-kdae-r3s-v2.apk` | aarch64_generic |
@@ -33,7 +33,7 @@
 
 ```sh
 # Debian / Ubuntu
-sudo dpkg -i daed_1.28.0-kdae_amd64.deb
+sudo dpkg -i daed_2.2.2-kdae_amd64.deb
 
 # OpenWrt 25.12（apk v3 / apk-tools 3）
 apk add --allow-untrusted ./daed-kdae-<设备>-v3.apk
@@ -77,7 +77,7 @@ ssh root@192.168.2.1 'apk add --allow-untrusted /tmp/daed-kdae-r4s-v2.apk'
 |---|---|---|
 | OpenWrt 25.12+（apk-tools 3） | `apk` | ✅ `daed-kdae-<device>-v3.apk`（apk v3，ADB 容器） |
 | OpenWrt 24.x / 23.x / Alpine | `apk` | ✅ `daed-kdae-<device>-v2.apk`（apk v2，传统 tar 格式） |
-| Debian / Ubuntu | `dpkg` | ✅ `daed_1.28.0-kdae_amd64.deb` |
+| Debian / Ubuntu | `dpkg` | ✅ `daed_2.2.2-kdae_amd64.deb` |
 
 已在真机验证（NanoPi R4S / OpenWrt 25.12.5 / apk-tools 3.0.5 / `aarch64_generic`）：
 
