@@ -11,6 +11,8 @@ Built on [daed](https://github.com/ksong008/daed) (GraphQL Web) + [dae-wing](htt
 
 </div>
 
+**English** &nbsp;|&nbsp; **[简体中文](./README.md)**
+
 ---
 
 ## ✨ Features
