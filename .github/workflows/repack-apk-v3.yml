@@ -281,5 +281,8 @@ jobs:
             cp v2.apk "${base}-v2.apk"
             gh release upload "${{ env.TARGET_TAG }}" "${base}-v2.apk" --clobber
           fi
-          gh release upload "${{ env.TARGET_TAG }}" "out/$asset" --clobber
+          # 规范资产（无后缀）保持兼容；同时额外提供显式的 -v3.apk，
+          # 让使用者能明确按格式选择：<base>-v2.apk（apk v2）/ <base>-v3.apk（apk v3）。
+          cp "out/$asset" "out/${base}-v3.apk"
+          gh release upload "${{ env.TARGET_TAG }}" "out/$asset" "out/${base}-v3.apk" --clobber
           gh release view "${{ env.TARGET_TAG }}" --json assets --jq '.assets[] | "\(.name)\t\(.size)"'
