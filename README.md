@@ -21,21 +21,27 @@
 
 ## 📦 安装包（[v1.28.0-kdae Release](https://github.com/Quan-0505/daed-kdae/releases/tag/v1.28.0-kdae)，deb + apk 统一发布）
 
-| 平台 / 设备 | 文件 | 架构 |
-|---|---|---|
-| Debian/Ubuntu x86_64 | `daed_1.28.0-kdae_amd64.deb` | amd64 |
-| OpenWrt X86 软路由 | `daed-kdae-x86.apk` | x86_64 |
-| NanoPi R4S | `daed-kdae-r4s.apk` | aarch64_cortex-a72 |
-| NanoPi R3S | `daed-kdae-r3s.apk` | aarch64_cortex-a53 |
-| NanoPi R2S | `daed-kdae-r2s.apk` | aarch64_cortex-a53 |
+| 平台 / 设备 | OpenWrt 25.12+ (apk v3) | OpenWrt 24.x/23.x/Alpine (apk v2) | 架构 |
+|---|---|---|---|
+| Debian/Ubuntu x86_64 | - | `daed_1.28.0-kdae_amd64.deb` (dpkg) | amd64 |
+| OpenWrt X86 软路由 | `daed-kdae-x86-v3.apk` | `daed-kdae-x86-v2.apk` | x86_64 |
+| NanoPi R4S | `daed-kdae-r4s-v3.apk` | `daed-kdae-r4s-v2.apk` | aarch64_generic |
+| NanoPi R3S | `daed-kdae-r3s-v3.apk` | `daed-kdae-r3s-v2.apk` | aarch64_generic |
+| NanoPi R2S | `daed-kdae-r2s-v3.apk` | `daed-kdae-r2s-v2.apk` | aarch64_generic |
 
 ## 🚀 快速开始
 
 ```sh
 # Debian / Ubuntu
 sudo dpkg -i daed_1.28.0-kdae_amd64.deb
+
 # OpenWrt 25.12（apk v3 / apk-tools 3）
-apk add --allow-untrusted ./daed-kdae-<设备>.apk
+apk add --allow-untrusted ./daed-kdae-<设备>-v3.apk
+
+# OpenWrt 24.x / 23.x / Alpine（apk v2）
+apk add --allow-untrusted ./daed-kdae-<设备>-v2.apk
+
+# 启用并启动服务
 /etc/init.d/daed enable && /etc/init.d/daed start
 # Web 面板: http://<机器IP>:2023
 ```
@@ -51,22 +57,27 @@ dae 的 eBPF 数据面还要求内核开启 **veth**、**clsact**（`NET_SCH_ING
 OpenWrt 官方固件多默认未开 `CONFIG_DEBUG_INFO_BTF`，这类设备两者都无法启动——需要自编译内核，或直接使用已启用的固件
 [Quan-0505/OpenWrt](https://github.com/Quan-0505/OpenWrt)（该固件已内置 BTF / veth / clsact 与宿主工具）。
 
-### ⚠️ 包格式（OpenWrt 25.12 用 apk v3）
+### ⚠️ 包格式（OpenWrt 25.12 用 apk v3，旧环境用 apk v2）
 
-OpenWrt **25.12 起使用 apk-tools 3.x**，包格式为 **apk v3**（ADB 容器：文件头为 `ADB`；既不是 tar 也不是 gzip，用 `tar`/apk2 工具打不开是正常的）。
+OpenWrt **25.12 起使用 apk-tools 3.x**，包格式为 **apk v3**（ADB 容器：文件头为 `ADB`；既不是 tar 也不是 gzip，用 `tar`/apk2 工具打不开是正常的）。旧版系统（24.x、23.x、Alpine 等）则使用传统 tar 格式的 **apk v2**。
 
-本 Release 的 `daed-kdae-r2s/r3s/r4s/x86.apk` 已重打包为 **apk v3**，可直接安装：
+本 Release 为避免混淆，严格按版本后缀区分提供：
 
 ```sh
-scp daed-kdae-r4s.apk root@192.168.2.1:/tmp/
-ssh root@192.168.2.1 'apk add --allow-untrusted /tmp/daed-kdae-r4s.apk'
+# OpenWrt 25.12+ (apk v3)
+scp daed-kdae-r4s-v3.apk root@192.168.2.1:/tmp/
+ssh root@192.168.2.1 'apk add --allow-untrusted /tmp/daed-kdae-r4s-v3.apk'
+
+# OpenWrt 24.x / 23.x / Alpine (apk v2)
+scp daed-kdae-r4s-v2.apk root@192.168.2.1:/tmp/
+ssh root@192.168.2.1 'apk add --allow-untrusted /tmp/daed-kdae-r4s-v2.apk'
 ```
 
 | 目标环境 | 包管理 | 用哪个文件 |
 |---|---|---|
-| OpenWrt 25.12+（apk-tools 3） | `apk` | ✅ `daed-kdae-<device>.apk`（apk v3，架构 `aarch64_generic` / `x86_64`） |
-| Alpine 或 apk-tools 2.x 旧环境 | `apk` | `daed-kdae-<device>-v2.apk`（保留的 v2 原件） |
-| Debian / Ubuntu | `dpkg` | ✅ `daed-kdae-x86.deb` |
+| OpenWrt 25.12+（apk-tools 3） | `apk` | ✅ `daed-kdae-<device>-v3.apk`（apk v3，ADB 容器） |
+| OpenWrt 24.x / 23.x / Alpine | `apk` | ✅ `daed-kdae-<device>-v2.apk`（apk v2，传统 tar 格式） |
+| Debian / Ubuntu | `dpkg` | ✅ `daed_1.28.0-kdae_amd64.deb` |
 
 已在真机验证（NanoPi R4S / OpenWrt 25.12.5 / apk-tools 3.0.5 / `aarch64_generic`）：
 
