@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-v2.2.2--kdae-orange.svg)](https://github.com/Quan-0505/daed-kdae/releases/tag/v2.2.2-kdae)
 
-基于 [daed](https://github.com/ksong008/daed)（GraphQL Web）+ [dae-wing](https://github.com/daeuniverse/dae-wing) + [dae](https://github.com/daeuniverse/dae) `kdae` 分支（Go eBPF 引擎）。
+基于 [daed](https://github.com/ksong008/daed)（GraphQL Web）+ [dae-wing](https://github.com/daeuniverse/dae-wing) + [kdae](https://github.com/olicesx/dae/tree/kdae)（olicesx/dae 的 `kdae` 分支 eBPF 引擎）。
 
 </div>
 
