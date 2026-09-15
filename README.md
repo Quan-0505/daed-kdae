@@ -15,7 +15,7 @@
 
 ## ✨ 特性
 
-- 🖥 **daed Web 面板** v1.28.0（GraphQL，内嵌二进制）
+- 🖥 **daed Web 面板** v2.2.2（GraphQL，内嵌二进制）
 - 📌 **kdae 引擎** @ `3ffde84`（sticky-ip / 异步延迟探测 / routing-epoch 竞态修复）
 - 🔄 **reload 双代切换**：IsReload flip handle 修复（透明代理不断流）
 
