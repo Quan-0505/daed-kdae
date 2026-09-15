@@ -24,10 +24,22 @@
 | 平台 / 设备 | 文件 | 架构 |
 |---|---|---|
 | Debian/Ubuntu x86_64 | `daed_1.28.0-kdae_amd64.deb` | amd64 |
-| OpenWrt X86 软路由 | `daed-kdae-x86.apk` | x86_64 |
-| NanoPi R4S | `daed-kdae-r4s.apk` | aarch64_cortex-a72 |
-| NanoPi R3S | `daed-kdae-r3s.apk` | aarch64_cortex-a53 |
-| NanoPi R2S | `daed-kdae-r2s.apk` | aarch64_cortex-a53 |
+| OpenWrt X86 软路由 | `daed-kdae-x86{,-v2,-v3}.apk` | x86_64 |
+| NanoPi R4S | `daed-kdae-r4s{,-v2,-v3}.apk` | aarch64_cortex-a72 |
+| NanoPi R3S | `daed-kdae-r3s{,-v2,-v3}.apk` | aarch64_cortex-a53 |
+| NanoPi R2S | `daed-kdae-r2s{,-v2,-v3}.apk` | aarch64_cortex-a53 |
+
+### apk 资产命名（两种格式并存）
+
+每个机型同时提供两种包格式，按 OpenWrt 版本选用：
+
+| 文件名 | 格式 | 适用 |
+|---|---|---|
+| `daed-kdae-<设备>-v3.apk` | **apk v3**（ADB 容器，文件头 `ADB`） | **OpenWrt 25.12+**（apk-tools 3） |
+| `daed-kdae-<设备>-v2.apk` | apk v2（gzip tar，文件头 `1f 8b`） | 旧版 OpenWrt（apk-tools 2） |
+| `daed-kdae-<设备>.apk` | 同 `-v3.apk` | 兼容旧链接（规范资产） |
+
+> 更新 APK 后：把新的 v2 载荷提交到 `openwrt/*.apk`，push 到 main 会自动重打两种格式并刷新 Release 资产。
 
 ## 🚀 快速开始
 
@@ -55,7 +67,8 @@ OpenWrt 官方固件多默认未开 `CONFIG_DEBUG_INFO_BTF`，这类设备两者
 
 OpenWrt **25.12 起使用 apk-tools 3.x**，包格式为 **apk v3**（ADB 容器：文件头为 `ADB`；既不是 tar 也不是 gzip，用 `tar`/apk2 工具打不开是正常的）。
 
-本 Release 的 `daed-kdae-r2s/r3s/r4s/x86.apk` 已重打包为 **apk v3**，可直接安装：
+本 Release 同时提供 **`daed-kdae-<设备>-v3.apk`（apk v3）** 与 **`daed-kdae-<设备>-v2.apk`（apk v2）**，
+无后缀的 `daed-kdae-<设备>.apk` 等同 `-v3.apk`。25.12 请用带 `-v3` 的那个：
 
 ```sh
 scp daed-kdae-r4s.apk root@192.168.2.1:/tmp/
