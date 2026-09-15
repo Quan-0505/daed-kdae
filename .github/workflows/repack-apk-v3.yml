@@ -29,7 +29,7 @@ on:
         required: true
         default: '25.12'
   push:
-    branches: [main]
+    branches: [main, update/kdae-ee4ce27]
     paths:
       - 'openwrt/**.apk'
       - '.github/workflows/repack-apk-v3.yml'
