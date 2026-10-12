@@ -1,0 +1,43 @@
+--- a/graphql/service/subscription/mutation_utils.go
++++ b/graphql/service/subscription/mutation_utils.go
+@@ -19,6 +19,7 @@
+ 	"github.com/daeuniverse/dae-wing/db"
+ 	"github.com/daeuniverse/dae-wing/graphql/internal"
+ 	"github.com/daeuniverse/dae-wing/graphql/service/node"
++	"github.com/daeuniverse/dae-wing/maintenance"
+ 	"github.com/daeuniverse/dae/common/subscription"
+ 	"github.com/go-co-op/gocron"
+ 	"github.com/graph-gophers/graphql-go"
+@@ -222,8 +223,8 @@
+ 	}
+ 	logrus.Info("Subscription " + tag + " update task enabled, with exp " + sub.CronExp)
+ 	_, err := s.Cron(sub.CronExp).Do(func() {
+-		if _, err := UpdateById(context.Background(), sub.ID); err != nil {
+-			logrus.Error(err)
++		if _, err := ScheduledUpdate(context.Background(), sub.ID); err != nil {
++			logrus.WithField("subscription", sub.ID).WithError(err).Error("Scheduled subscription update failed; existing nodes retained")
+ 		}
+ 	})
+ 	if err != nil {
+@@ -272,7 +273,7 @@
+ 	tx := db.BeginTx(ctx)
+ 	defer func() {
+ 		if err == nil {
+-			tx.Commit()
++			err = tx.Commit().Error
+ 		} else {
+ 			tx.Rollback()
+ 		}
+@@ -480,3 +481,12 @@
+ 
+ 	return &Resolver{Subscription: &m}, nil
+ }
++
++// ScheduledUpdate reloads only after UpdateById has committed its transaction.
++func ScheduledUpdate(ctx context.Context, id uint) (*db.Subscription, error) {
++	sub, err := UpdateById(ctx, id)
++	if err == nil {
++		maintenance.SubscriptionUpdated()
++	}
++	return sub, err
++}

@@ -1,0 +1,70 @@
+--- a/graphql/service/node/latency_mutation_utils.go
++++ b/graphql/service/node/latency_mutation_utils.go
+@@ -6,6 +6,7 @@
+ package node
+ 
+ import (
++	"github.com/daeuniverse/dae/common/consts"
+ 	"context"
+ 	"io"
+ 	"sync"
+@@ -100,7 +101,7 @@
+ 		TestedAtV: time.Now(),
+ 	}
+ 
+-	d, err := dialer.NewFromLink(option, dialer.InstanceOption{DisableCheck: false}, node.Link, "")
++	d, err := dialer.NewFromLinkContext(context.Background(), option, dialer.InstanceOption{DisableCheck: false}, node.Link, "")
+ 	if err != nil {
+ 		msg := err.Error()
+ 		resolver.MessageV = &msg
+@@ -108,22 +109,38 @@
+ 	}
+ 	defer d.Close()
+ 
+-	result, err := d.ProbeLatency()
+-	if err != nil {
+-		msg := err.Error()
+-		resolver.MessageV = &msg
+-		return resolver
++	// kdae probes asynchronously: activate background checks, trigger a
++	// check cycle, and poll the last probe observation for a bounded window.
++	tcpV4 := &dialer.NetworkType{
++		L4Proto:   consts.L4ProtoStr_TCP,
++		IpVersion: consts.IpVersionStr_4,
++	}
++	d.ActivateCheck()
++	d.NotifyCheck()
++	var observation dialer.DialerProbeObservationSnapshot
++	deadline := time.Now().Add(10 * time.Second)
++	for {
++		observation = d.SnapshotLastProbe(tcpV4)
++		if !observation.CheckedAt.IsZero() || time.Now().After(deadline) {
++			break
++		}
++		time.Sleep(200 * time.Millisecond)
+ 	}
+ 
+-	resolver.AliveVal = result.Alive
+-	resolver.TestedAtV = result.CheckedAt
+-	if result.Alive {
+-		latencyMs := int32(result.Latency.Milliseconds())
++	alive := d.MustGetAlive(tcpV4)
++	resolver.AliveVal = alive
++	if !observation.CheckedAt.IsZero() {
++		resolver.TestedAtV = observation.CheckedAt
++	}
++	if observation.HasLatency {
++		latencyMs := int32(observation.Latency.Milliseconds())
+ 		resolver.LatencyMsV = &latencyMs
+-		return resolver
+ 	}
+-	if result.Message != "" {
+-		msg := result.Message
++	if !alive || observation.Message != "" {
++		msg := observation.Message
++		if msg == "" {
++			msg = "no latency result"
++		}
+ 		resolver.MessageV = &msg
+ 	}
+ 	return resolver

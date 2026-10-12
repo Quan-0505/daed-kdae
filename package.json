@@ -1,14 +1,14 @@
 {
   "name": "daed-kdae",
-  "version": "1.28.0",
+  "version": "2.2.4",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
+    "dev": "pnpm --dir console --filter daed dev",
+    "dev:mock": "pnpm --dir console --filter daed dev --mode mock",
+    "start": "node serve-console.js",
     "build": "node build.js",
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.21.2"
+    "check-types": "pnpm --dir console --filter daed check-types",
+    "test:console": "pnpm --dir console exec node scripts/console-smoke.mjs"
   }
 }

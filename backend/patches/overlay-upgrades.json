@@ -1,0 +1,22 @@
+{
+  "consoleapi/geodata.go": {
+    "before": [
+      "f866202ed8a454b6971c90ed68a982ca52d8c0b72fc30f63b49cc82f64ef69cd",
+      "62c13168c6bacc1e592cdcecff3df55af23b25c02db66ad168210336c2acaaeb"
+    ],
+    "after": "b577fb0c3d0e37a8afe75ca375dd88b8c61804b855ba20ba6dbd007dc1ba1a77"
+  },
+  "consoleapi/handler.go": {
+    "before": [
+      "6b827eb4dad139ebd5471b5576342a8d062e80aba475c49597678f185d67c3c2",
+      "4e472fe95498bb3ff7dd87f7e181ec391a3e6afe5f94780a4217ba052cb0a699"
+    ],
+    "after": "c679fd6d366ce7555e1b2b2d4f07e75664e3e86b7b7817e76d2704b8b9168009"
+  },
+  "graphql/service/subscription/maintenance_test.go": {
+    "before": [
+      "9c59f66881e43c69ca970c43569a4321d3a582312361d78b8f6bd06e51e08bfb"
+    ],
+    "after": "a9e7773a46348ab5f797920c9342bcdb73ba1c953591095203a6cd7ee83e6ab4"
+  }
+}

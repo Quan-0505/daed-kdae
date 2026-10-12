@@ -1,0 +1,20 @@
+--- a/cmd/run.go
++++ b/cmd/run.go
+@@ -124,6 +124,9 @@
+ 				logrus.Warnln("Failed to restore last running state:", err)
+ 			}
+ 
++			stopMaintenance := consoleapi.StartMaintenance(cfgDir)
++			defer stopMaintenance()
++
+ 			// ListenAndServe GraphQL.
+ 			schema, err := graphql.Schema()
+ 			if err != nil {
+@@ -156,6 +159,7 @@
+ 			sigs := make(chan os.Signal, 1)
+ 			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGILL)
+ 			for sig := range sigs {
++				stopMaintenance()
+ 				_errorExit(errors.New(sig.String()))
+ 				return
+ 			}

@@ -1,0 +1,35 @@
+name: Console build and browser checks
+on:
+  push:
+    paths: ['console/**', 'build.js', 'serve-console.js', 'package.json', '.github/workflows/console.yml']
+  pull_request:
+    paths: ['console/**', 'build.js', 'serve-console.js', 'package.json', '.github/workflows/console.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  console:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: console/pnpm-lock.yaml
+      - run: pnpm --dir console install --frozen-lockfile
+      - run: npm run build
+      - run: npm run check-types
+      - run: pnpm --dir console exec playwright install --with-deps chromium
+      - run: npm run test:console
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kdae-console
+          path: |
+            dist/
+            console/test-results/

@@ -1,3 +1,23 @@
 node_modules/
 .DS_Store
 *.log
+
+dist/
+**/dist/
+**/.turbo/
+console/test-results/
+console/apps/web/.env.local
+__pycache__/
+*.pyc
+
+# Never publish runtime accounts, resources, credentials or device evidence.
+backend/tests/results/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.private.json
+session.json
+.env.local
+release-output/

@@ -1,1 +1,14 @@
-* text eol=lf
+* text=auto eol=lf
+*.zip -text
+*.dat -text
+*.deb -text
+*.apk -text
+*.rpm -text
+*.zst -text
+*.webp -text
+*.png -text
+*.woff -text
+*.woff2 -text
+checksums.txt -text
+# Unified patch context intentionally prefixes source indentation with a space.
+backend/patches/*.patch text eol=lf -whitespace

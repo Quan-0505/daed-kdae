@@ -1,0 +1,35 @@
+--- a/dae/run.go
++++ b/dae/run.go
+@@ -13,6 +13,7 @@
+ 	"sync"
+ 	"time"
+ 
++	"github.com/daeuniverse/dae-wing/observability"
+ 	daeConfig "github.com/daeuniverse/dae/config"
+ 	"github.com/daeuniverse/dae/control"
+ 	"github.com/daeuniverse/dae/pkg/config_parser"
+@@ -163,6 +164,8 @@
+ 			log = logrus.New()
+ 			logger.SetLogger(log, newConf.Global.LogLevel, disableTimestamp, nil)
+ 			logger.SetLogger(logrus.StandardLogger(), newConf.Global.LogLevel, disableTimestamp, nil)
++			observability.Bind(log)
++			observability.Bind(logrus.StandardLogger())
+ 			log.SetOutput(oldLogOutput) // FIXME: THIS IS A HACK.
+ 			logrus.SetOutput(oldLogOutput)
+ 
+@@ -179,6 +182,7 @@
+ 			newC, err := newControlPlane(log, obj, dnsCache, newConf, externGeoDataDirs, true)
+ 			if err != nil {
+ 				log.WithError(err).Errorln("[Reload] Candidate rejected; keeping current generation active")
++				observability.Discard(log)
+ 				newReloadMsg.Callback <- err
+ 				continue
+ 			}
+@@ -291,6 +295,7 @@
+ 			c = newC
+ 			conf = newConf
+ 			c.PublishActiveDebugState()
++			observability.Activate(log)
+ 			c.ResumeOutboundConnectivityUpdates()
+ 			// kdae: 终结本次 TC HookSet 事务。缺这一步时事务一直处于 active，
+ 			// 下一次 reload 会以 "TC HookSet transaction already active" 失败，

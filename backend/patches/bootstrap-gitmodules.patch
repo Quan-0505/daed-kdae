@@ -1,0 +1,7 @@
+--- a/.gitmodules
++++ b/.gitmodules
+@@ -1,3 +1,3 @@
+ [submodule "dae-core"]
+ 	path = dae-core
+-	url = https://github.com/daeuniverse/dae
++	url = https://github.com/olicesx/dae

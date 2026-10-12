@@ -1,0 +1,542 @@
+--- a/cmd/run.go
++++ b/cmd/run.go
+@@ -15,10 +15,12 @@
+ 
+ 	"github.com/daeuniverse/dae-wing/cmd/internal"
+ 	"github.com/daeuniverse/dae-wing/common"
++	"github.com/daeuniverse/dae-wing/consoleapi"
+ 	"github.com/daeuniverse/dae-wing/dae"
+ 	"github.com/daeuniverse/dae-wing/db"
+ 	"github.com/daeuniverse/dae-wing/graphql"
+ 	"github.com/daeuniverse/dae-wing/graphql/service/config"
++	"github.com/daeuniverse/dae-wing/observability"
+ 
+ 	"github.com/daeuniverse/dae-wing/graphql/service/subscription"
+ 	"github.com/daeuniverse/dae-wing/webrender"
+@@ -71,6 +73,10 @@
+ 			if err := os.MkdirAll(cfgDir, 0750); err != nil && !os.IsExist(err) {
+ 				logrus.Fatalln(err)
+ 			}
++			if err := observability.Initialize(cfgDir); err != nil {
++				logrus.Fatalln("Initialize console logs:", err)
++			}
++			defer observability.Default.Close()
+ 
+ 			// Require "sudo" if necessary.
+ 			if !apiOnly {
+@@ -106,15 +112,21 @@
+ 					disableTimestamp,
+ 					apiOnly,
+ 				); err != nil {
+-					logrus.Fatalln("dae.Run:", err)
+-				}
+-				os.Exit(1)
++					logrus.Errorln("dae.Run:", err)
++					_ = observability.Default.Close()
++					os.Exit(1)
++				}
++				_ = observability.Default.Close()
++				os.Exit(0)
+ 			}()
+ 			// Reload with running state.
+ 			if err := restoreRunningState(); err != nil {
+ 				logrus.Warnln("Failed to restore last running state:", err)
+ 			}
+ 
++			stopMaintenance := consoleapi.StartMaintenance(cfgDir)
++			defer stopMaintenance()
++
+ 			// ListenAndServe GraphQL.
+ 			schema, err := graphql.Schema()
+ 			if err != nil {
+@@ -122,6 +134,7 @@
+ 			}
+ 			mux := http.NewServeMux()
+ 			mux.Handle("/graphql", auth(cors.AllowAll().Handler(&relay.Handler{Schema: schema})))
++			mux.Handle("/api/", auth(cors.AllowAll().Handler(consoleapi.Handler(observability.Default, cfgDir))))
+ 			if err = webrender.Handle(mux); err != nil {
+ 				errorExit(err)
+ 			}
+@@ -146,6 +159,7 @@
+ 			sigs := make(chan os.Signal, 1)
+ 			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGILL)
+ 			for sig := range sigs {
++				stopMaintenance()
+ 				_errorExit(errors.New(sig.String()))
+ 				return
+ 			}
+@@ -234,12 +248,15 @@
+ 			}
+ 			return []byte(user.JwtSecret), nil
+ 		})
+-		ctx := context.Background()
++		ctx := r.Context()
+ 		if err == nil {
+ 			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+ 				if expireAt, err := token.Claims.GetExpirationTime(); err == nil && time.Now().Before(expireAt.Time) {
+ 					ctx = context.WithValue(ctx, "role", claims["role"])
+ 					ctx = context.WithValue(ctx, "user", &user)
++					var cancel context.CancelFunc
++					ctx, cancel = context.WithDeadline(ctx, expireAt.Time)
++					defer cancel()
+ 				}
+ 			}
+ 		}
+--- a/dae/run.go
++++ b/dae/run.go
+@@ -13,6 +13,7 @@
+ 	"sync"
+ 	"time"
+ 
++	"github.com/daeuniverse/dae-wing/observability"
+ 	daeConfig "github.com/daeuniverse/dae/config"
+ 	"github.com/daeuniverse/dae/control"
+ 	"github.com/daeuniverse/dae/pkg/config_parser"
+@@ -163,6 +164,8 @@
+ 			log = logrus.New()
+ 			logger.SetLogger(log, newConf.Global.LogLevel, disableTimestamp, nil)
+ 			logger.SetLogger(logrus.StandardLogger(), newConf.Global.LogLevel, disableTimestamp, nil)
++			observability.Bind(log)
++			observability.Bind(logrus.StandardLogger())
+ 			log.SetOutput(oldLogOutput) // FIXME: THIS IS A HACK.
+ 			logrus.SetOutput(oldLogOutput)
+ 
+@@ -179,6 +182,7 @@
+ 			newC, err := newControlPlane(log, obj, dnsCache, newConf, externGeoDataDirs, true)
+ 			if err != nil {
+ 				log.WithError(err).Errorln("[Reload] Candidate rejected; keeping current generation active")
++				observability.Discard(log)
+ 				newReloadMsg.Callback <- err
+ 				continue
+ 			}
+@@ -291,6 +295,7 @@
+ 			c = newC
+ 			conf = newConf
+ 			c.PublishActiveDebugState()
++			observability.Activate(log)
+ 			c.ResumeOutboundConnectivityUpdates()
+ 			// kdae: 终结本次 TC HookSet 事务。缺这一步时事务一直处于 active，
+ 			// 下一次 reload 会以 "TC HookSet transaction already active" 失败，
+--- a/graphql/service/config/mutation_utils.go
++++ b/graphql/service/config/mutation_utils.go
+@@ -288,170 +288,11 @@
+ 		return 1, nil
+ 	}
+ 
+-	//// Run selected global+dns+routing.
+-	/// Get them from database and parse them to daeConfig.
+-	var mConfig db.Config
+-	var mDns db.Dns
+-	var mRouting db.Routing
+-	q := d.Model(&db.Config{}).Where("selected = ?", true).First(&mConfig)
+-	if (q.Error == nil && q.RowsAffected == 0) || errors.Is(q.Error, gorm.ErrRecordNotFound) {
+-		return 0, fmt.Errorf("please select a config")
+-	}
+-	if q.Error != nil {
+-		return 0, q.Error
+-	}
+-	q = d.Model(&db.Dns{}).Where("selected = ?", true).First(&mDns)
+-	if (q.Error == nil && q.RowsAffected == 0) || errors.Is(q.Error, gorm.ErrRecordNotFound) {
+-		return 0, fmt.Errorf("please select a dns")
+-	}
+-	if q.Error != nil {
+-		return 0, q.Error
+-	}
+-	q = d.Model(&db.Routing{}).Where("selected = ?", true).First(&mRouting)
+-	if (q.Error == nil && q.RowsAffected == 0) || errors.Is(q.Error, gorm.ErrRecordNotFound) {
+-		return 0, fmt.Errorf("please select a routing")
+-	}
+-	if q.Error != nil {
+-		return 0, q.Error
+-	}
+-	c, err := dae.ParseConfig(&mConfig.Global, &mDns.Dns, &mRouting.Routing)
+-	if err != nil {
+-		return 0, err
+-	}
+-	/// Fill in necessary groups and nodes.
+-	// Find groups needed by routing.
+-	outbounds := dae.NecessaryOutbounds(&c.Routing)
+-	var groups []db.Group
+-	q = d.Model(&db.Group{}).
+-		Where("name in ?", outbounds).
+-		Preload("PolicyParams").
+-		Preload("SubscriptionBindings").
+-		Preload("SubscriptionBindings.Subscription").
+-		Preload("SubscriptionBindings.Subscription.Node").
+-		Find(&groups)
+-	if q.Error != nil {
+-		return 0, q.Error
+-	}
+-
+-	{
+-		// Find not found.
+-		nameSet := map[string]struct{}{}
+-		for _, name := range outbounds {
+-			nameSet[name] = struct{}{}
+-		}
+-		for _, g := range groups {
+-			delete(nameSet, g.Name)
+-		}
+-		var notFound []string
+-		for name := range nameSet {
+-			switch name {
+-			case "direct", "block", "must_rules":
+-				// Preset groups.
+-			default:
+-				notFound = append(notFound, name)
+-			}
+-		}
+-		if len(notFound) > 0 {
+-			return 0, fmt.Errorf("groups not defined but referenced by routing: %v", strings.Join(notFound, ", "))
+-		}
+-	}
+-	// Find nodes in groups.
+-	var nodes []*node
+-	for i := range groups {
+-		for _, binding := range groups[i].SubscriptionBindings {
+-			matchedNodes, err := matchedNodesForGroupSubscription(&binding)
+-			if err != nil {
+-				subscriptionName := binding.Subscription.Link
+-				if binding.Subscription.Tag != nil && *binding.Subscription.Tag != "" {
+-					subscriptionName = *binding.Subscription.Tag
+-				}
+-				return 0, fmt.Errorf("group '%v' has invalid subscription regex for '%v': %w", groups[i].Name, subscriptionName, err)
+-			}
+-			for _, n := range matchedNodes {
+-				n := n
+-				nodes = append(nodes, &node{
+-					dbNode: &n,
+-					groups: []*db.Group{&groups[i]},
+-				})
+-			}
+-		}
+-		var solitaryNodes []db.Node
+-		if err = d.Model(groups[i]).
+-			Association("Node").
+-			Find(&solitaryNodes); err != nil {
+-			return 0, err
+-		}
+-		for _, n := range solitaryNodes {
+-			n := n
+-			nodes = append(nodes, &node{
+-				dbNode: &n,
+-				groups: []*db.Group{&groups[i]},
+-			})
+-		}
+-	}
+-	nodes = deduplicateNodes(nodes)
+-	uniquefyNodesName(nodes)
+-	// Group -> nodes
+-	mGroupNode := make(map[*db.Group]map[*node]struct{})
+-	for i := range groups {
+-		mGroupNode[&groups[i]] = make(map[*node]struct{})
+-	}
+-	for _, n := range nodes {
+-		for _, group := range n.groups {
+-			mGroupNode[group][n] = struct{}{}
+-		}
+-	}
+-	// Fill in group section.
+-	for g, sNodes := range mGroupNode {
+-		if len(sNodes) == 0 {
+-			return 0, fmt.Errorf("please add at least one node into group '%v' (referenced by current routing '%v')", g.Name, mRouting.Name)
+-		}
+-		// Parse policy.
+-		var policy daeConfig.FunctionListOrString
+-		if len(g.PolicyParams) == 0 {
+-			policy = g.Policy
+-		} else {
+-			// Parse policy params.
+-			var params []*config_parser.Param
+-			for _, param := range g.PolicyParams {
+-				params = append(params, param.Marshal())
+-			}
+-			policy = &config_parser.Function{
+-				Name:   g.Policy,
+-				Not:    false,
+-				Params: params,
+-			}
+-		}
+-		// fiexed group cannot have more than one node.
+-		if g.Policy == "fixed" && len(sNodes) > 1 {
+-			return 0, fmt.Errorf("group '%v' with policy 'fixed' cannot have more than one node", g.Name)
+-		}
+-		// Node names to filter.
+-		var names []*config_parser.Param
+-		for node := range sNodes {
+-			names = append(names, &config_parser.Param{
+-				Val: node.uniqueName,
+-			})
+-		}
+-		grp := daeConfig.Group{
+-			Name: g.Name,
+-			Filter: [][]*config_parser.Function{{{
+-				Name:   "name",
+-				Not:    false,
+-				Params: names,
+-			}}},
+-			Policy: policy,
+-		}
+-		for range grp.Filter {
+-			// Keep the same length as filter's.
+-			grp.FilterAnnotation = append(grp.FilterAnnotation, []*config_parser.Param{})
+-		}
+-		c.Group = append(c.Group, grp)
+-	}
+-	// Fill in node section.
+-	for _, node := range nodes {
+-		c.Node = append(c.Node, daeConfig.KeyableString(fmt.Sprintf("%v:%v", node.uniqueName, node.dbNode.Link)))
+-	}
++	prepared, err := BuildSelected(d)
++	if err != nil {
++		return 0, err
++	}
++	c, mConfig, mDns, mRouting, groups := prepared.Config, prepared.Global, prepared.DNS, prepared.Routing, prepared.Groups
+ 
+ 	/// Reload with current config.
+ 	chReloadCallback := make(chan error)
+@@ -497,3 +338,181 @@
+ 
+ 	return 1, nil
+ }
++
++// SelectedConfig is the pure database-to-engine plan shared by run and export.
++type SelectedConfig struct {
++	Config  *daeConfig.Config
++	Global  db.Config
++	DNS     db.Dns
++	Routing db.Routing
++	Groups  []db.Group
++}
++
++func BuildSelected(d *gorm.DB) (selected *SelectedConfig, err error) {
++	//// Run selected global+dns+routing.
++	/// Get them from database and parse them to daeConfig.
++	var mConfig db.Config
++	var mDns db.Dns
++	var mRouting db.Routing
++	q := d.Model(&db.Config{}).Where("selected = ?", true).First(&mConfig)
++	if (q.Error == nil && q.RowsAffected == 0) || errors.Is(q.Error, gorm.ErrRecordNotFound) {
++		return nil, fmt.Errorf("please select a config")
++	}
++	if q.Error != nil {
++		return nil, q.Error
++	}
++	q = d.Model(&db.Dns{}).Where("selected = ?", true).First(&mDns)
++	if (q.Error == nil && q.RowsAffected == 0) || errors.Is(q.Error, gorm.ErrRecordNotFound) {
++		return nil, fmt.Errorf("please select a dns")
++	}
++	if q.Error != nil {
++		return nil, q.Error
++	}
++	q = d.Model(&db.Routing{}).Where("selected = ?", true).First(&mRouting)
++	if (q.Error == nil && q.RowsAffected == 0) || errors.Is(q.Error, gorm.ErrRecordNotFound) {
++		return nil, fmt.Errorf("please select a routing")
++	}
++	if q.Error != nil {
++		return nil, q.Error
++	}
++	c, err := dae.ParseConfig(&mConfig.Global, &mDns.Dns, &mRouting.Routing)
++	if err != nil {
++		return nil, err
++	}
++	/// Fill in necessary groups and nodes.
++	// Find groups needed by routing.
++	outbounds := dae.NecessaryOutbounds(&c.Routing)
++	var groups []db.Group
++	q = d.Model(&db.Group{}).
++		Where("name in ?", outbounds).
++		Preload("PolicyParams").
++		Preload("SubscriptionBindings").
++		Preload("SubscriptionBindings.Subscription").
++		Preload("SubscriptionBindings.Subscription.Node").
++		Find(&groups)
++	if q.Error != nil {
++		return nil, q.Error
++	}
++
++	{
++		// Find not found.
++		nameSet := map[string]struct{}{}
++		for _, name := range outbounds {
++			nameSet[name] = struct{}{}
++		}
++		for _, g := range groups {
++			delete(nameSet, g.Name)
++		}
++		var notFound []string
++		for name := range nameSet {
++			switch name {
++			case "direct", "block", "must_rules":
++				// Preset groups.
++			default:
++				notFound = append(notFound, name)
++			}
++		}
++		if len(notFound) > 0 {
++			return nil, fmt.Errorf("groups not defined but referenced by routing: %v", strings.Join(notFound, ", "))
++		}
++	}
++	// Find nodes in groups.
++	var nodes []*node
++	for i := range groups {
++		for _, binding := range groups[i].SubscriptionBindings {
++			matchedNodes, err := matchedNodesForGroupSubscription(&binding)
++			if err != nil {
++				subscriptionName := binding.Subscription.Link
++				if binding.Subscription.Tag != nil && *binding.Subscription.Tag != "" {
++					subscriptionName = *binding.Subscription.Tag
++				}
++				return nil, fmt.Errorf("group '%v' has invalid subscription regex for '%v': %w", groups[i].Name, subscriptionName, err)
++			}
++			for _, n := range matchedNodes {
++				n := n
++				nodes = append(nodes, &node{
++					dbNode: &n,
++					groups: []*db.Group{&groups[i]},
++				})
++			}
++		}
++		var solitaryNodes []db.Node
++		if err = d.Model(groups[i]).
++			Association("Node").
++			Find(&solitaryNodes); err != nil {
++			return nil, err
++		}
++		for _, n := range solitaryNodes {
++			n := n
++			nodes = append(nodes, &node{
++				dbNode: &n,
++				groups: []*db.Group{&groups[i]},
++			})
++		}
++	}
++	nodes = deduplicateNodes(nodes)
++	uniquefyNodesName(nodes)
++	// Group -> nodes
++	mGroupNode := make(map[*db.Group]map[*node]struct{})
++	for i := range groups {
++		mGroupNode[&groups[i]] = make(map[*node]struct{})
++	}
++	for _, n := range nodes {
++		for _, group := range n.groups {
++			mGroupNode[group][n] = struct{}{}
++		}
++	}
++	// Fill in group section.
++	for g, sNodes := range mGroupNode {
++		if len(sNodes) == 0 {
++			return nil, fmt.Errorf("please add at least one node into group '%v' (referenced by current routing '%v')", g.Name, mRouting.Name)
++		}
++		// Parse policy.
++		var policy daeConfig.FunctionListOrString
++		if len(g.PolicyParams) == 0 {
++			policy = g.Policy
++		} else {
++			// Parse policy params.
++			var params []*config_parser.Param
++			for _, param := range g.PolicyParams {
++				params = append(params, param.Marshal())
++			}
++			policy = &config_parser.Function{
++				Name:   g.Policy,
++				Not:    false,
++				Params: params,
++			}
++		}
++		// fiexed group cannot have more than one node.
++		if g.Policy == "fixed" && len(sNodes) > 1 {
++			return nil, fmt.Errorf("group '%v' with policy 'fixed' cannot have more than one node", g.Name)
++		}
++		// Node names to filter.
++		var names []*config_parser.Param
++		for node := range sNodes {
++			names = append(names, &config_parser.Param{
++				Val: node.uniqueName,
++			})
++		}
++		grp := daeConfig.Group{
++			Name: g.Name,
++			Filter: [][]*config_parser.Function{{{
++				Name:   "name",
++				Not:    false,
++				Params: names,
++			}}},
++			Policy: policy,
++		}
++		for range grp.Filter {
++			// Keep the same length as filter's.
++			grp.FilterAnnotation = append(grp.FilterAnnotation, []*config_parser.Param{})
++		}
++		c.Group = append(c.Group, grp)
++	}
++	// Fill in node section.
++	for _, node := range nodes {
++		c.Node = append(c.Node, daeConfig.KeyableString(fmt.Sprintf("%v:%v", node.uniqueName, node.dbNode.Link)))
++	}
++
++	return &SelectedConfig{c, mConfig, mDns, mRouting, groups}, nil
++}
+--- a/graphql/query.go
++++ b/graphql/query.go
+@@ -71,7 +71,16 @@
+ 		return "", err
+ 	}
+ 	if hashedPassword != m.PasswordHash {
+-		return "", fmt.Errorf("incorrect username or password")
++		if !verifyLegacyPassword(m.PasswordHash, password) {
++			return "", fmt.Errorf("incorrect username or password")
++		}
++		update := d.Model(&db.User{}).Where("id = ? AND password_hash = ? AND jwt_secret = ?", m.ID, m.PasswordHash, m.JwtSecret).Update("password_hash", hashedPassword)
++		if update.Error != nil {
++			return "", fmt.Errorf("unable to migrate password hash")
++		}
++		if update.RowsAffected != 1 {
++			return "", fmt.Errorf("account changed; retry login")
++		}
+ 	}
+ 
+ 	// File a token.
+--- a/graphql/service/subscription/mutation_utils.go
++++ b/graphql/service/subscription/mutation_utils.go
+@@ -19,6 +19,7 @@
+ 	"github.com/daeuniverse/dae-wing/db"
+ 	"github.com/daeuniverse/dae-wing/graphql/internal"
+ 	"github.com/daeuniverse/dae-wing/graphql/service/node"
++	"github.com/daeuniverse/dae-wing/maintenance"
+ 	"github.com/daeuniverse/dae/common/subscription"
+ 	"github.com/go-co-op/gocron"
+ 	"github.com/graph-gophers/graphql-go"
+@@ -222,8 +223,8 @@
+ 	}
+ 	logrus.Info("Subscription " + tag + " update task enabled, with exp " + sub.CronExp)
+ 	_, err := s.Cron(sub.CronExp).Do(func() {
+-		if _, err := UpdateById(context.Background(), sub.ID); err != nil {
+-			logrus.Error(err)
++		if _, err := ScheduledUpdate(context.Background(), sub.ID); err != nil {
++			logrus.WithField("subscription", sub.ID).WithError(err).Error("Scheduled subscription update failed; existing nodes retained")
+ 		}
+ 	})
+ 	if err != nil {
+@@ -272,7 +273,7 @@
+ 	tx := db.BeginTx(ctx)
+ 	defer func() {
+ 		if err == nil {
+-			tx.Commit()
++			err = tx.Commit().Error
+ 		} else {
+ 			tx.Rollback()
+ 		}
+@@ -480,3 +481,12 @@
+ 
+ 	return &Resolver{Subscription: &m}, nil
+ }
++
++// ScheduledUpdate reloads only after UpdateById has committed its transaction.
++func ScheduledUpdate(ctx context.Context, id uint) (*db.Subscription, error) {
++	sub, err := UpdateById(ctx, id)
++	if err == nil {
++		maintenance.SubscriptionUpdated()
++	}
++	return sub, err
++}

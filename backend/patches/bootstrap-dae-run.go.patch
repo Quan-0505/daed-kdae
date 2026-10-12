@@ -1,0 +1,397 @@
+--- a/dae/run.go
++++ b/dae/run.go
+@@ -6,12 +6,13 @@
+ package dae
+ 
+ import (
++	"context"
++	"errors"
+ 	"fmt"
+-	"net/netip"
+ 	"runtime"
+ 	"sync"
+-
+-	"github.com/daeuniverse/dae/common/netutils"
++	"time"
++
+ 	daeConfig "github.com/daeuniverse/dae/config"
+ 	"github.com/daeuniverse/dae/control"
+ 	"github.com/daeuniverse/dae/pkg/config_parser"
+@@ -70,67 +71,86 @@
+ 	}
+ 
+ 	// New c.
+-	c, err = newControlPlane(log, nil, nil, conf, externGeoDataDirs)
++	c, err = newControlPlane(log, nil, nil, conf, externGeoDataDirs, false)
+ 	if err != nil {
+ 		return err
+ 	}
++	// Established flows belong to the process, not a retiring configuration.
++	// A plane-local manager would close every live TCP stream on reload.
++	processSessions := control.NewSessionManager(context.Background())
++	defer processSessions.Close()
++	if err := c.AttachSessionManager(processSessions); err != nil {
++		_ = c.Close()
++		return err
++	}
++	// kdae: publish this control plane as the active routing-epoch execution
++	// owner so handleConn can resolve routing-epoch attribution for traffic.
++	c.PublishActiveDebugState()
+ 
+ 	// Serve tproxy TCP/UDP server util signals.
+ 	var listener *control.Listener
+-	go func() {
+-		readyChan := make(chan bool, 1)
+-		go func() {
+-			<-readyChan
+-			log.Infoln("Ready")
+-		}()
+-		control.GetDaeNetns().With(func() error {
+-			if listener, err = c.ListenAndServe(readyChan, conf.Global.TproxyPort); err != nil {
+-				log.Errorln("ListenAndServe:", err)
+-			}
+-			return err
++	defer func() {
++		if listener != nil {
++			_ = listener.Close()
++		}
++		err = errors.Join(err, c.Close())
++	}()
++	type serveExit struct {
++		plane *control.ControlPlane
++		err   error
++	}
++	serveExits := make(chan serveExit, 4)
++	runDone := make(chan struct{})
++	defer close(runDone)
++	reportExit := func(plane *control.ControlPlane, err error) {
++		select {
++		case serveExits <- serveExit{plane, err}:
++		case <-runDone:
++		}
++	}
++	initialReady := make(chan bool, 1)
++	go func(plane *control.ControlPlane) {
++		serveErr := control.GetDaeNetns().With(func() error {
++			var listenErr error
++			if listener, listenErr = plane.Listen(conf.Global.TproxyPort); listenErr != nil {
++				return listenErr
++			}
++			if listenErr = listener.ValidateCurrentNetns(); listenErr != nil {
++				_ = listener.Close()
++				return listenErr
++			}
++			return plane.Serve(initialReady, listener)
+ 		})
+-		// Exit
+-		ChReloadConfigs <- nil
+-	}()
+-	reloading := false
++		select {
++		case initialReady <- false:
++		default:
++		}
++		reportExit(plane, serveErr)
++	}(c)
++	if ready := <-initialReady; !ready {
++		return fmt.Errorf("initial serve failed: %w", (<-serveExits).err)
++	}
++	log.Infoln("Ready")
+ 	/* dae-wing start */
+ 	var errReload error
+ 	var chCallback chan<- error
+ 	/* dae-wing end */
+ loop:
+-	for newReloadMsg := range ChReloadConfigs {
++	for {
++		var newReloadMsg *ReloadMessage
++		select {
++		case exited := <-serveExits:
++			// A retired or rejected generation exiting is not a stop request.
++			if exited.plane != c {
++				continue
++			}
++			err = fmt.Errorf("active control plane stopped: %v", exited.err)
++			break loop
++		case newReloadMsg = <-ChReloadConfigs:
++		}
+ 		switch newReloadMsg {
+ 		case nil:
+-			/* dae-wing start */
+-			// We will receive nil after control plane being Closed.
+-			// We'll judge if we are in a reloading.
+-			/* dae-wing end */
+-
+-			if reloading {
+-				if listener == nil {
+-					// Failed to listen. Exit.
+-					break loop
+-				}
+-				// Serve.
+-				reloading = false
+-				log.Warnln("[Reload] Serve")
+-				readyChan := make(chan bool, 1)
+-				go func() {
+-					if err := c.Serve(readyChan, listener); err != nil {
+-						log.Errorln("ListenAndServe:", err)
+-					}
+-					// Exit
+-					ChReloadConfigs <- nil
+-				}()
+-				<-readyChan
+-				log.Warnln("[Reload] Finished")
+-				/* dae-wing start */
+-				chCallback <- errReload
+-				/* dae-wing end */
+-			} else {
+-				// Listening error.
+-				break loop
+-			}
++			break loop
+ 		default:
+ 			// Reload signal.
+ 			log.Warnln("[Reload] Received reload signal; prepare to reload")
+@@ -147,33 +167,90 @@
+ 			logrus.SetOutput(oldLogOutput)
+ 
+ 			// New control plane.
+-			obj := c.EjectBpf()
++			// Borrow only while preparing. The active plane must retain BPF and
++			// interface-watcher ownership if the candidate is rejected.
++			obj := c.PeekBpf()
+ 			var dnsCache map[string]*control.DnsCache
+ 			if conf.Dns.IpVersionPrefer == newConf.Dns.IpVersionPrefer {
+ 				// Only keep dns cache when ip version preference not change.
+ 				dnsCache = c.CloneDnsCache()
+ 			}
+ 			log.Warnln("[Reload] Load new control plane")
+-			newC, err := newControlPlane(log, obj, dnsCache, newConf, externGeoDataDirs)
++			newC, err := newControlPlane(log, obj, dnsCache, newConf, externGeoDataDirs, true)
+ 			if err != nil {
+-				/* dae-wing start */
+-				errReload = err
+-				/* dae-wing end */
+-
+-				log.WithFields(logrus.Fields{
+-					"err": err,
+-				}).Errorln("[Reload] Failed to reload; try to roll back configuration")
+-				// Load last config back.
+-				newC, err = newControlPlane(log, obj, dnsCache, conf, externGeoDataDirs)
++				log.WithError(err).Errorln("[Reload] Candidate rejected; keeping current generation active")
++				newReloadMsg.Callback <- err
++				continue
++			}
++			if err := newC.AttachSessionManager(processSessions); err != nil {
++				_ = newC.Close()
++				newReloadMsg.Callback <- err
++				continue
++			}
++			stagedListener, cloneErr := listener.Clone()
++			if cloneErr != nil {
++				_ = newC.Close()
++				newReloadMsg.Callback <- fmt.Errorf("clone reload listener: %w", cloneErr)
++				continue
++			}
++			if newConf.Global.TproxyPort != conf.Global.TproxyPort {
++				_ = stagedListener.Close()
++				listenErr := control.GetDaeNetns().With(func() error {
++					var err error
++					stagedListener, err = newC.Listen(newConf.Global.TproxyPort)
++					if err == nil {
++						err = stagedListener.ValidateCurrentNetns()
++					}
++					return err
++				})
++				if listenErr != nil {
++					if stagedListener != nil {
++						_ = stagedListener.Close()
++					}
++					_ = newC.Close()
++					newReloadMsg.Callback <- listenErr
++					continue
++				}
++			}
++			c.PauseOutboundConnectivityUpdates()
++			if err == nil {
++				// kdae: 分阶段 TC hook 接管（新版 reload 架构）。旧协议 EjectBpf/InjectBpf
++				// 不再搬移 tcx link，必须显式借出旧世代 HookSet 再 flip；顺序同 kdae 自身
++				// cmd/run.go 的 staged handoff：Prepare -> Commit -> Adopt。必须早于
++				// oldC.Close()，否则旧 HookSet 已释放。
++				// kdae: 共享同一份 BPF 对象的两代必须互链为 routing epoch peer，
++				// 否则新世代 Serve 时 BPF maintenance 取不到 predecessor，报
++				// "has no routing epoch peer" 并使 Serve 失败（daemon 退出）。
++				// 世代 Close 时会自动 Unlink。
++				if herr := c.LinkRoutingEpochPeer(newC); herr != nil {
++					err = herr
++				} else if herr := newC.PrepareTCHookHandoff(c); herr != nil {
++					err = herr
++				} else if herr := newC.CommitPreparedBpfHookFlip(); herr != nil {
++					err = herr
++				} else if herr := newC.AdoptPreparedTCHookSet(c); herr != nil {
++					err = herr
++				}
+ 				if err != nil {
+-					obj.Close()
+-					c.Close()
+-					log.WithFields(logrus.Fields{
+-						"err": err,
+-					}).Fatalln("[Reload] Failed to roll back configuration")
+-				}
+-				newConf = conf
+-				log.Errorln("[Reload] Last reload failed; rolled back configuration")
++					// 候选世代尚未提交，关闭以释放部分绑定，随后走既有回滚路径。
++					log.WithFields(logrus.Fields{"err": err}).Errorln("[Reload] Failed to take over TC hooks")
++				}
++			}
++			if err != nil {
++				rollbackErr := errors.Join(
++					newC.RestorePreparedTCHookSet(c),
++					newC.RollbackPreparedBpfHookFlip(),
++					newC.RollbackPreparedRoutingEpoch(),
++					newC.ClearPreparedTCHookHandoff(),
++				)
++				_ = newC.Close()
++				_ = stagedListener.Close()
++				c.ResumeOutboundConnectivityUpdates()
++				newReloadMsg.Callback <- errors.Join(err, rollbackErr)
++				if rollbackErr != nil {
++					return fmt.Errorf("restore active reload generation: %w", rollbackErr)
++				}
++				continue
+ 			} else {
+ 				log.Warnln("[Reload] Stopped old control plane")
+ 
+@@ -183,28 +260,74 @@
+ 			}
+ 
+ 			// Inject bpf objects into the new control plane life-cycle.
+-			newC.InjectBpf(obj)
+-
+-			// Prepare new context.
+ 			oldC := c
+-			c = newC
+-			conf = newConf
+-			reloading = true
+ 			/* dae-wing start */
+ 			chCallback = newReloadMsg.Callback
+ 			/* dae-wing end */
+ 
+-			// Ready to close.
++			// kdae: 新 reload 架构要求候选世代先 serve、旧世代后退休。共享同一份
++			// BPF 的两代在 serve 期间必须保持 routing epoch peer 链接，而旧世代
++			// Close() 末尾会 UnlinkRoutingEpochPeer；若沿用旧的“先 Close 再
++			// Serve”，新世代的 BPF maintenance 会因没有 peer 而 Serve 失败。
++			// 与 kdae 自身一致：克隆 listener 起候选世代，就绪后再退休旧世代。
++			readyChan := make(chan bool, 1)
++			go func(plane *control.ControlPlane, socket *control.Listener) {
++				reportExit(plane, plane.Serve(readyChan, socket))
++			}(newC, stagedListener)
++			if ready := <-readyChan; !ready {
++				rollbackErr := errors.Join(newC.RestorePreparedTCHookSet(oldC), newC.RollbackPreparedBpfHookFlip(), newC.RollbackPreparedRoutingEpoch(), newC.ClearPreparedTCHookHandoff())
++				_ = stagedListener.Close()
++				_ = newC.Close()
++				rollbackErr = errors.Join(rollbackErr, oldC.PublishListenerSockets(listener), oldC.RebuildReloadDatapath())
++				oldC.PublishActiveDebugState()
++				oldC.ResumeOutboundConnectivityUpdates()
++				chCallback <- errors.Join(fmt.Errorf("reload serve failed before becoming ready"), rollbackErr)
++				if rollbackErr != nil {
++					return rollbackErr
++				}
++				continue
++			}
++			newC.InjectBpf(oldC.EjectBpf())
++			c = newC
++			conf = newConf
++			c.PublishActiveDebugState()
++			c.ResumeOutboundConnectivityUpdates()
++			// kdae: 终结本次 TC HookSet 事务。缺这一步时事务一直处于 active，
++			// 下一次 reload 会以 "TC HookSet transaction already active" 失败，
++			// 并且回滚也会失败（FATAL 退出）。与 kdae 自身在发布后调用一致。
++			if ferr := c.FinalizePreparedTCHooks(); ferr != nil {
++				log.WithError(ferr).Errorln("[Reload] Failed to finalize prepared TC hooks")
++			}
++			log.Warnln("[Reload] Finished")
++			// Retire only the previous generation's listener copies.
++			oldListener := listener
++			listener = stagedListener
++			if oldListener != nil && oldListener != stagedListener {
++				_ = oldListener.Close()
++			}
++			// Keep established sessions alive while the retired generation drains.
++			// Serialize retirement with the next reload so its epoch slot cannot
++			// be reused while it still owns connections.
++			oldC.MarkRetired()
++			if oldC.ActiveSessionCount() > 0 {
++				timer := time.NewTimer(30 * time.Second)
++				select {
++				case <-oldC.DrainIdleCh():
++				case <-timer.C:
++					log.Warnln("[Reload] Retired connection drain reached 30s limit")
++				}
++				timer.Stop()
++			}
+ 			oldC.Close()
+-		}
+-	}
+-	if e := c.Close(); e != nil {
+-		return fmt.Errorf("close control plane: %w", e)
+-	}
+-	return nil
++			/* dae-wing start */
++			chCallback <- errReload
++			/* dae-wing end */
++		}
++	}
++	return err
+ }
+ 
+-func newControlPlane(log *logrus.Logger, bpf interface{}, dnsCache map[string]*control.DnsCache, conf *daeConfig.Config, externGeoDataDirs []string) (c *control.ControlPlane, err error) {
++func newControlPlane(log *logrus.Logger, bpf *control.InheritedBpf, dnsCache map[string]*control.DnsCache, conf *daeConfig.Config, externGeoDataDirs []string, prepareOnly bool) (c *control.ControlPlane, err error) {
+ 
+ 	// Print configuration.
+ 	if log.IsLevelEnabled(logrus.DebugLevel) {
+@@ -217,7 +340,6 @@
+ 
+ 	// Init Direct Dialers.
+ 	direct.InitDirectDialers(conf.Global.FallbackResolver)
+-	netutils.FallbackDns = netip.MustParseAddrPort(conf.Global.FallbackResolver)
+ 
+ 	if !conf.Global.DisableWaitingNetwork && len(conf.Global.WanInterface) > 0 {
+ 		// Wait for network for WAN ready.
+@@ -242,9 +364,13 @@
+ 	}
+ 
+ 	// New dae control plane.
+-	c, err = control.NewControlPlane(
++	// kdae: a non-nil bpf means an inherited (shared-BPF) reload generation; it
++	// must build with IsReload=true so the TC flip handles differ from the
++	// previous generation (otherwise the old plane's cleanup deletes the new
++	// plane's filters, breaking the dae0/dae0peer redirect path).
++	c, err = control.NewControlPlaneWithContextOptions(
++		context.Background(),
+ 		log,
+-		bpf,
+ 		dnsCache,
+ 		subscriptionToNodeList,
+ 		conf.Group,
+@@ -252,6 +378,20 @@
+ 		&conf.Global,
+ 		&conf.Dns,
+ 		externGeoDataDirs,
++		control.ControlPlaneBuildOptions{
++			// kdae: InheritedBpf 是 bpfObjects 的类型别名；非 nil 表示本世代
++			// 继承上一世代的 eBPF 对象（共享数据面 reload），必须 IsReload=true
++			// 使 TC flip 句柄与上一世代不同，否则旧世代的清理会删掉新世代的
++			// 过滤器，破坏 dae0/dae0peer 重定向路径。
++			IsReload:     bpf != nil,
++			InheritedBpf: bpf,
++			// kdae: 新版 reload 架构（control/tc_hook_handoff.go）要求候选世代先“延迟提交
++			// 数据面”，等旧世代借出 HookSet 后再 flip；否则新世代 attach tcx link 会
++			// EEXIST，reload 直接失败掉线。语义同 kdae 自身 cmd/run_controlplane.go
++			// 的 prepareOnly。
++			DelayDatapathCommit:   prepareOnly,
++			DelayDNSListenerStart: prepareOnly,
++		},
+ 	)
+ 	if err != nil {
+ 		return nil, err

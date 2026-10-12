@@ -1,0 +1,46 @@
+{
+  "name": "@daeuniverse/monorepo",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@10.24.0",
+  "description": "A Web Dashboard For dae",
+  "author": {
+    "email": "dae@v2raya.org",
+    "name": "daeuniverse"
+  },
+  "license": "MIT",
+  "homepage": "https://daeuniverse.github.io/daed",
+  "repository": "https://github.com/daeuniverse/daed",
+  "scripts": {
+    "build": "pnpm --filter daed... build",
+    "build:mock": "pnpm --filter daed build --mode mock",
+    "dev": "pnpm --filter daed dev",
+    "dev:mock": "pnpm --filter daed dev --mode mock",
+    "test": "pnpm --filter daed... test",
+    "check-types": "pnpm --filter daed check-types"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "catalog:",
+    "@commitlint/cli": "catalog:",
+    "@commitlint/config-conventional": "catalog:",
+    "@eslint-react/eslint-plugin": "catalog:",
+    "@graphql-codegen/cli": "6.3.0",
+    "@graphql-codegen/client-preset": "catalog:",
+    "@graphql-codegen/introspection": "catalog:",
+    "@tanstack/eslint-plugin-query": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "eslint-plugin-react-refresh": "catalog:",
+    "execa": "catalog:",
+    "globals": "catalog:",
+    "husky": "catalog:",
+    "lint-staged": "catalog:",
+    "playwright": "catalog:",
+    "prettier": "catalog:",
+    "simple-git": "catalog:",
+    "sort-package-json": "catalog:",
+    "tsx": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:"
+  }
+}

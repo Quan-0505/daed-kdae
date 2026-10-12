@@ -1,0 +1,42 @@
+{
+  ".gitmodules": {
+    "before": "24bbe520a595768fa13a8258d6ef816f14d18de365b94b9d7a0b930d7915057c",
+    "after": "00c9352fa099d1693ae6a8cb11e4b1ee8909b83a962870fe739fb0895e96058d",
+    "patch": "bootstrap-gitmodules.patch"
+  },
+  "dae/run.go": {
+    "before": "748a95abac2a3dda0741da10d8278cd1dd8e792061d3a0f02f0fab08dcb6e233",
+    "after": "c43b20e070d2eb8bd9fef3b98537e7d2746a475cceb9b25f70dfe1b549fb70e6",
+    "patch": "bootstrap-dae-run.go.patch"
+  },
+  "dae/runtime.go": {
+    "before": "582676a55373d44220dced8552f094482d7d35a423d13de98ae0865cbe687062",
+    "after": "3a37082ca24578aa5ab1b651bdd2484d940846959395d2143c52e409d0e6a62c",
+    "patch": "bootstrap-dae-runtime.go.patch"
+  },
+  "dae/utils.go": {
+    "before": "dc94b41aea63270a5041f31f2de910a55ed760dd77253bd61149b0256f7c3a2b",
+    "after": "fbf35d4d0700e828c3faf64d4ed2302cc2f3d5482024ad76401b1f92f0762857",
+    "patch": "bootstrap-dae-utils.go.patch"
+  },
+  "db/node_utils.go": {
+    "before": "39135decd67366098a5d99b46389fbbbfd47406a0fe39fffec2f71fedbccf2b2",
+    "after": "f045d333f2990504fa2007b2846b3fbef490083b2facc2ab40bfdf6decabb69e",
+    "patch": "bootstrap-db-node_utils.go.patch"
+  },
+  "go.mod": {
+    "before": "1d01ba984081f43bbbea370c8c63af2cc698a8076d2043e021d66ef3a40c1887",
+    "after": "05e78e59bd7d644e91b6261073a7a6bcf5ee47459074f8caab4b655971eae222",
+    "patch": "bootstrap-go.mod.patch"
+  },
+  "go.sum": {
+    "before": "75bbdffbca6e8823a0197869e26478bb5eb77a5336baea5d26f88b0fc9d906d0",
+    "after": "c4b07d0d1e38ce9a5a5b1add9649a880e612f15b1d18e18d672e485f7e67f334",
+    "patch": "bootstrap-go.sum.patch"
+  },
+  "graphql/service/node/latency_mutation_utils.go": {
+    "before": "b7e722f4c24dd9606fceaf310daf285b30b8d878413ca20702970ef3b4ca805d",
+    "after": "16dc4b1433f464ec6b621f5808e896adc0df7a47a31f1fd1590624559a8b6a2e",
+    "patch": "bootstrap-graphql-service-node-latency_mutation_utils.go.patch"
+  }
+}
