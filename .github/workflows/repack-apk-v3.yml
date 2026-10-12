@@ -158,6 +158,9 @@ jobs:
 
           include \$(INCLUDE_DIR)/package.mk
 
+          # Go binaries are already stripped; preserve their verified bytes.
+          RSTRIP:=:
+
           define Package/daed
             SECTION:=net
             CATEGORY:=Network
