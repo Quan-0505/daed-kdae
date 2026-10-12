@@ -21,6 +21,7 @@ npm run check-types
 python3 backend/prepare-wing.py /absolute/path/to/wing --clone
 export PATH=/usr/local/go/bin:$PATH
 cd /absolute/path/to/wing
+make deps
 go test -race ./maintenance ./observability ./consoleapi ./graphql ./graphql/service/subscription
 make OUTPUT=/absolute/path/to/daed APPNAME=daed WEB_DIST=/absolute/path/to/daed-kdae/dist VERSION=v2.2.4-kdae bundle
 ```
