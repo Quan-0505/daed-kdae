@@ -134,6 +134,10 @@ try {
       .getByRole('button', { name: new RegExp(`^${label}`) })
       .click()
     await page.getByRole('heading', { name: label, exact: true }).first().waitFor()
+    await page.waitForFunction(
+      (expected) => document.querySelector('.console-sidebar [aria-current="page"]')?.innerText.split('\n')[0] === expected,
+      label,
+    )
     assert.equal((await page.locator('.console-sidebar [aria-current="page"]').innerText()).split('\n')[0], label)
   }
   await page.locator('.console-sidebar').getByRole('button', { name: /^群组/ }).click()
