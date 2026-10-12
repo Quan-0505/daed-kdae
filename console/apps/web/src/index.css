@@ -696,9 +696,10 @@ form {
   .console-sidebar { width: 248px; }
   .console-topbar > header { min-width: 0; }
   .console-account-name { max-width: 44px; }
+  .console-topbar header > div > div:last-child { min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
   .console-workspace { margin-left: 0; }
   .console-main { padding: 24px 16px 36px; }
-  .console-topbar > header { height: 64px; }
+  .console-topbar > header { height: auto; min-height: 64px; padding-block: 6px; }
   .console-page-heading h1 { font-size: 30px; }
   .runtime-heading { padding: 18px; }
   .runtime-heading-row { gap: 12px; align-items: flex-start; }
