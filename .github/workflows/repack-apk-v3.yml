@@ -237,6 +237,11 @@ jobs:
           find verify -maxdepth 3 | head -20
           test -x verify/usr/bin/daed
           test -e verify/etc/init.d/daed
+          if [ "${SOURCE_ALREADY_V3:-0}" != 1 ]; then
+            cmp prebuilt/usr/bin/daed verify/usr/bin/daed
+            cmp prebuilt/usr/share/daed/geoip.dat verify/usr/share/daed/geoip.dat
+            cmp prebuilt/usr/share/daed/geosite.dat verify/usr/share/daed/geosite.dat
+          fi
           if [ "${HAS_WEB:-0}" = 1 ]; then test -s verify/usr/share/daed/web/index.html; fi
           file verify/usr/bin/daed
           mkdir -p out
