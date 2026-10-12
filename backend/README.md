@@ -49,3 +49,8 @@ python3 -m unittest discover -s backend/tests -p 'test_*.py'
 ```
 
 迁移脚本不替换原 Rust 数据目录；实际安装应单独配置 Go 数据目录并设置回滚。不要将运行设备数据库、迁移报告、日志、截图、令牌或备份提交到仓库。
+
+
+## Native DNS listener reload handoff
+
+A configured `dns.bind` owns separate UDP/TCP sockets. The staged tproxy listener clone does not release that bind. Reload now stops the previous native DNS listener immediately before activating the candidate; rejection closes the candidate and restarts the previous DNS listener. The previous routing plane and established sessions remain alive during preparation. This prevents valid geodata updates from being rolled back solely because a native DNS port is occupied. A real-socket regression covers the collision, handoff and rollback. Backend CI also uploads a source-identified ARM64 binary for device validation.

@@ -22,10 +22,11 @@ def main():
  run('git','submodule','update','--init','--recursive',cwd=wing/'dae-core')
  manifest=json.loads((base/'patches/bootstrap-manifest.json').read_text())
  final=json.loads((base/'patches/console-manifest.json').read_text())
+ transitions=json.loads((base/'patches/console-transitions.json').read_text())
  patches=[]
  for name,item in manifest.items():
   current=sha(wing/name)
-  if current==item['after'] or current==final.get(name,{}).get('after'):continue
+  if current==item['after'] or current==final.get(name,{}).get('after') or current in transitions.get(name,{}):continue
   if current!=item['before']:raise SystemExit('Unknown source changes; refusing to overwrite: '+name)
   patch=base/'patches'/item['patch'];run('git','apply','--check',str(patch),cwd=wing);patches.append(patch)
  for patch in patches:run('git','apply',str(patch),cwd=wing)

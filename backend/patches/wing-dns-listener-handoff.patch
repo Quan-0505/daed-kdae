@@ -1,0 +1,33 @@
+--- a/dae/run.go
++++ b/dae/run.go
+@@ -275,17 +275,25 @@
+ 			// Serve”，新世代的 BPF maintenance 会因没有 peer 而 Serve 失败。
+ 			// 与 kdae 自身一致：克隆 listener 起候选世代，就绪后再退休旧世代。
+ 			readyChan := make(chan bool, 1)
+-			go func(plane *control.ControlPlane, socket *control.Listener) {
+-				reportExit(plane, plane.Serve(readyChan, socket))
+-			}(newC, stagedListener)
++			// Native DNS has its own socket, separate from the cloned tproxy listener.
++			// Release its bind before the candidate activates; keep the old plane alive
++			// so failed candidates can restore the previous DNS server below.
++			dnsStopErr := oldC.StopDNSListener()
++			if dnsStopErr != nil {
++				readyChan <- false
++			} else {
++				go func(plane *control.ControlPlane, socket *control.Listener) {
++					reportExit(plane, plane.Serve(readyChan, socket))
++				}(newC, stagedListener)
++			}
+ 			if ready := <-readyChan; !ready {
+ 				rollbackErr := errors.Join(newC.RestorePreparedTCHookSet(oldC), newC.RollbackPreparedBpfHookFlip(), newC.RollbackPreparedRoutingEpoch(), newC.ClearPreparedTCHookHandoff())
+ 				_ = stagedListener.Close()
+ 				_ = newC.Close()
+-				rollbackErr = errors.Join(rollbackErr, oldC.PublishListenerSockets(listener), oldC.RebuildReloadDatapath())
++				rollbackErr = errors.Join(rollbackErr, oldC.RestartDNSListener(), oldC.PublishListenerSockets(listener), oldC.RebuildReloadDatapath())
+ 				oldC.PublishActiveDebugState()
+ 				oldC.ResumeOutboundConnectivityUpdates()
+-				chCallback <- errors.Join(fmt.Errorf("reload serve failed before becoming ready"), rollbackErr)
++				chCallback <- errors.Join(fmt.Errorf("reload serve failed before becoming ready"), dnsStopErr, rollbackErr)
+ 				if rollbackErr != nil {
+ 					return rollbackErr
+ 				}

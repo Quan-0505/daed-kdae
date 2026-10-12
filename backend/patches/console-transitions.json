@@ -4,7 +4,8 @@
     "e3cf545521aeeb62231f500f70f8c86c4db1a52f02c084bc2a7d3df4218044ad": "wing-maintenance-cmd-upgrade.patch"
   },
   "dae/run.go": {
-    "c43b20e070d2eb8bd9fef3b98537e7d2746a475cceb9b25f70dfe1b549fb70e6": "native-dae-run.go.patch"
+    "c43b20e070d2eb8bd9fef3b98537e7d2746a475cceb9b25f70dfe1b549fb70e6": "native-dae-run.go.patch",
+    "29c835752c5d001ba133386886cc6ac282dbac8e257b03408f3e30b37e8a1ade": "wing-dns-listener-handoff.patch"
   },
   "graphql/service/config/mutation_utils.go": {
     "f57a5aa16fec110ff2906046aed26897d7ca22308200a45d85394602ab8113c3": "native-graphql-service-config-mutation_utils.go.patch"

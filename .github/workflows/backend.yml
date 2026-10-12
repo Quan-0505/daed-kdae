@@ -10,9 +10,18 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: console/pnpm-lock.yaml
+      - run: pnpm --dir console install --frozen-lockfile && npm run build
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.x'
@@ -24,5 +33,19 @@ jobs:
         working-directory: ${{ runner.temp }}/wing
         run: |
           make deps
-          go test -race ./maintenance ./observability ./consoleapi ./graphql ./graphql/service/subscription
+          go test -race ./dae ./maintenance ./observability ./consoleapi ./graphql ./graphql/service/subscription
           CGO_ENABLED=0 go build -trimpath -o "$RUNNER_TEMP/daed" .
+      - name: Build verified ARM64 console for router validation
+        working-directory: ${{ runner.temp }}/wing
+        run: |
+          CGO_ENABLED=0 make OUTPUT="$RUNNER_TEMP/daed" APPNAME=daed WEB_DIST="$GITHUB_WORKSPACE/dist" VERSION="v2.2.4-kdae-dnsfix" bundle
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags=embedallowed -trimpath -ldflags="-s -w -X github.com/daeuniverse/dae-wing/db.AppVersion=v2.2.4-kdae-dnsfix -X github.com/daeuniverse/dae-wing/db.AppName=daed" -o "$RUNNER_TEMP/daed-arm64" .
+          sha256sum "$RUNNER_TEMP/daed-arm64" > "$RUNNER_TEMP/daed-arm64.sha256"
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/source-commit.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kdae-arm64-dns-handoff
+          path: |
+            ${{ runner.temp }}/daed-arm64
+            ${{ runner.temp }}/daed-arm64.sha256
+            ${{ runner.temp }}/source-commit.txt
