@@ -324,7 +324,7 @@ export function HeaderWithActions() {
                   alt="avatar"
                   size={22}
                 />
-                <span className="text-sm font-medium leading-none">
+                <span className="console-account-name max-w-40 truncate text-sm font-medium leading-none">
                   {userQuery?.user?.name || userQuery?.user?.username || 'unknown'}
                 </span>
                 <ChevronDown
