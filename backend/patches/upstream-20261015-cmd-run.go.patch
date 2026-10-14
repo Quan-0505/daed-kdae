@@ -1,0 +1,85 @@
+diff --git a/cmd/run.go b/cmd/run.go
+index 7dce577..4f37d92 100644
+--- a/cmd/run.go
++++ b/cmd/run.go
+@@ -15,10 +15,12 @@ import (
+ 
+ 	"github.com/daeuniverse/dae-wing/cmd/internal"
+ 	"github.com/daeuniverse/dae-wing/common"
++	"github.com/daeuniverse/dae-wing/consoleapi"
+ 	"github.com/daeuniverse/dae-wing/dae"
+ 	"github.com/daeuniverse/dae-wing/db"
+ 	"github.com/daeuniverse/dae-wing/graphql"
+ 	"github.com/daeuniverse/dae-wing/graphql/service/config"
++	"github.com/daeuniverse/dae-wing/observability"
+ 
+ 	"github.com/daeuniverse/dae-wing/graphql/service/subscription"
+ 	"github.com/daeuniverse/dae-wing/webrender"
+@@ -71,6 +73,10 @@ var (
+ 			if err := os.MkdirAll(cfgDir, 0750); err != nil && !os.IsExist(err) {
+ 				logrus.Fatalln(err)
+ 			}
++			if err := observability.Initialize(cfgDir); err != nil {
++				logrus.Fatalln("Initialize console logs:", err)
++			}
++			defer observability.Default.Close()
+ 
+ 			// Require "sudo" if necessary.
+ 			if !apiOnly {
+@@ -106,15 +112,21 @@ var (
+ 					disableTimestamp,
+ 					apiOnly,
+ 				); err != nil {
+-					logrus.Fatalln("dae.Run:", err)
++					logrus.Errorln("dae.Run:", err)
++					_ = observability.Default.Close()
++					os.Exit(1)
+ 				}
+-				os.Exit(1)
++				_ = observability.Default.Close()
++				os.Exit(0)
+ 			}()
+ 			// Reload with running state.
+ 			if err := restoreRunningState(); err != nil {
+ 				logrus.Warnln("Failed to restore last running state:", err)
+ 			}
+ 
++			stopMaintenance := consoleapi.StartMaintenance(cfgDir)
++			defer stopMaintenance()
++
+ 			// ListenAndServe GraphQL.
+ 			schema, err := graphql.Schema()
+ 			if err != nil {
+@@ -122,6 +134,7 @@ var (
+ 			}
+ 			mux := http.NewServeMux()
+ 			mux.Handle("/graphql", auth(cors.AllowAll().Handler(&relay.Handler{Schema: schema})))
++			mux.Handle("/api/", auth(cors.AllowAll().Handler(consoleapi.Handler(observability.Default, cfgDir))))
+ 			if err = webrender.Handle(mux); err != nil {
+ 				errorExit(err)
+ 			}
+@@ -146,6 +159,7 @@ var (
+ 			sigs := make(chan os.Signal, 1)
+ 			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGILL)
+ 			for sig := range sigs {
++				stopMaintenance()
+ 				_errorExit(errors.New(sig.String()))
+ 				return
+ 			}
+@@ -234,12 +248,15 @@ func auth(next http.Handler) http.Handler {
+ 			}
+ 			return []byte(user.JwtSecret), nil
+ 		})
+-		ctx := context.Background()
++		ctx := r.Context()
+ 		if err == nil {
+ 			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+ 				if expireAt, err := token.Claims.GetExpirationTime(); err == nil && time.Now().Before(expireAt.Time) {
+ 					ctx = context.WithValue(ctx, "role", claims["role"])
+ 					ctx = context.WithValue(ctx, "user", &user)
++					var cancel context.CancelFunc
++					ctx, cancel = context.WithDeadline(ctx, expireAt.Time)
++					defer cancel()
+ 				}
+ 			}
+ 		}

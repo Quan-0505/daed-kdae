@@ -33,18 +33,19 @@ jobs:
         working-directory: ${{ runner.temp }}/wing
         run: |
           make deps
-          go test -race ./dae ./maintenance ./observability ./consoleapi ./graphql ./graphql/service/subscription
+          go test -race ./dae ./maintenance ./observability ./consoleapi ./graphql ./graphql/service/...
+          (cd dae-core && go test ./component/sniffing ./component/dns ./component/outbound/dialer ./control)
           CGO_ENABLED=0 go build -trimpath -o "$RUNNER_TEMP/daed" .
       - name: Build verified ARM64 console for router validation
         working-directory: ${{ runner.temp }}/wing
         run: |
-          CGO_ENABLED=0 make OUTPUT="$RUNNER_TEMP/daed" APPNAME=daed WEB_DIST="$GITHUB_WORKSPACE/dist" VERSION="v2.2.4-kdae-dnsfix" bundle
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags=embedallowed -trimpath -ldflags="-s -w -X github.com/daeuniverse/dae-wing/db.AppVersion=v2.2.4-kdae-dnsfix -X github.com/daeuniverse/dae-wing/db.AppName=daed" -o "$RUNNER_TEMP/daed-arm64" .
+          CGO_ENABLED=0 make OUTPUT="$RUNNER_TEMP/daed" APPNAME=daed WEB_DIST="$GITHUB_WORKSPACE/dist" VERSION="v2.2.5-kdae" bundle
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags=embedallowed -trimpath -ldflags="-s -w -X github.com/daeuniverse/dae-wing/db.AppVersion=v2.2.5-kdae -X github.com/daeuniverse/dae-wing/db.AppName=daed" -o "$RUNNER_TEMP/daed-arm64" .
           sha256sum "$RUNNER_TEMP/daed-arm64" > "$RUNNER_TEMP/daed-arm64.sha256"
           printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/source-commit.txt"
       - uses: actions/upload-artifact@v4
         with:
-          name: kdae-arm64-dns-handoff
+          name: kdae-arm64-upstream-20261015
           path: |
             ${{ runner.temp }}/daed-arm64
             ${{ runner.temp }}/daed-arm64.sha256

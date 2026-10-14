@@ -8,7 +8,7 @@ def main():
  manifest=json.loads((base/'patches/console-manifest.json').read_text())
  transitions=json.loads((base/'patches/console-transitions.json').read_text())
  core=subprocess.check_output(['git','-C',str(wing/'dae-core'),'rev-parse','HEAD'],text=True).strip()
- if core!='f7c1cb6b04364903a55dbf9790d6e5eca7d5a628':raise SystemExit('kdae revision differs; port and test first.')
+ if core!='eb510872ae9474b7fa55a7f1d252ffd79a937854':raise SystemExit('kdae revision differs; port and test first.')
  if digest(wing/'dae/run.go')=='217c20a2c978f651139d18fd2c0436caab6d1e30bff3d1ce7f4048897f4b9188':
   subprocess.run([sys.executable,str(base/'apply-wing-patch.py'),str(wing)],check=True)
  patches=[]

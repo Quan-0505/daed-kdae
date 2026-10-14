@@ -2,41 +2,41 @@
   ".gitmodules": {
     "before": "24bbe520a595768fa13a8258d6ef816f14d18de365b94b9d7a0b930d7915057c",
     "after": "00c9352fa099d1693ae6a8cb11e4b1ee8909b83a962870fe739fb0895e96058d",
-    "patch": "bootstrap-gitmodules.patch"
+    "patch": "upstream-20261015-.gitmodules.patch"
+  },
+  "cmd/run.go": {
+    "before": "40511c13085d052870c5688199287ee5ae8285e8a61e6be628cb7fe6315d8566",
+    "after": "15183d435b9a1dbaac2745dfcbf3e6f17189b4b37198dae84e93d5286c3540cf",
+    "patch": "upstream-20261015-cmd-run.go.patch"
   },
   "dae/run.go": {
-    "before": "748a95abac2a3dda0741da10d8278cd1dd8e792061d3a0f02f0fab08dcb6e233",
-    "after": "c43b20e070d2eb8bd9fef3b98537e7d2746a475cceb9b25f70dfe1b549fb70e6",
-    "patch": "bootstrap-dae-run.go.patch"
-  },
-  "dae/runtime.go": {
-    "before": "582676a55373d44220dced8552f094482d7d35a423d13de98ae0865cbe687062",
-    "after": "3a37082ca24578aa5ab1b651bdd2484d940846959395d2143c52e409d0e6a62c",
-    "patch": "bootstrap-dae-runtime.go.patch"
-  },
-  "dae/utils.go": {
-    "before": "dc94b41aea63270a5041f31f2de910a55ed760dd77253bd61149b0256f7c3a2b",
-    "after": "fbf35d4d0700e828c3faf64d4ed2302cc2f3d5482024ad76401b1f92f0762857",
-    "patch": "bootstrap-dae-utils.go.patch"
-  },
-  "db/node_utils.go": {
-    "before": "39135decd67366098a5d99b46389fbbbfd47406a0fe39fffec2f71fedbccf2b2",
-    "after": "f045d333f2990504fa2007b2846b3fbef490083b2facc2ab40bfdf6decabb69e",
-    "patch": "bootstrap-db-node_utils.go.patch"
+    "before": "d259726642701d2106d09b1ff24b789b2e1e3c56a94bb24dd4d87ba5e1337e17",
+    "after": "87f5553f434c55071c22d9ce2b04d8e64e727e773c1ab094feafa638670d2bc2",
+    "patch": "upstream-20261015-dae-run.go.patch"
   },
   "go.mod": {
-    "before": "1d01ba984081f43bbbea370c8c63af2cc698a8076d2043e021d66ef3a40c1887",
-    "after": "05e78e59bd7d644e91b6261073a7a6bcf5ee47459074f8caab4b655971eae222",
-    "patch": "bootstrap-go.mod.patch"
+    "before": "a203a484ad1fe3cd7de8a5a2d4858c2c88c63bfebd3209878fa5a2a49aca66b7",
+    "after": "1760d0ea1794f465360b0ba52939f8b7c2b3ab1579a9d6ba98e203159f21a87d",
+    "patch": "upstream-20261015-go.mod.patch"
   },
   "go.sum": {
-    "before": "75bbdffbca6e8823a0197869e26478bb5eb77a5336baea5d26f88b0fc9d906d0",
-    "after": "c4b07d0d1e38ce9a5a5b1add9649a880e612f15b1d18e18d672e485f7e67f334",
-    "patch": "bootstrap-go.sum.patch"
+    "before": "3d663045f0ba974e28327c1005a7fa969d801f3cff21e7bea232f6ee45f9a338",
+    "after": "9c1733b64da05bdbb84e13ee9484a4fc69540f8f725cf8376df394e12c9b3826",
+    "patch": "upstream-20261015-go.sum.patch"
   },
-  "graphql/service/node/latency_mutation_utils.go": {
-    "before": "b7e722f4c24dd9606fceaf310daf285b30b8d878413ca20702970ef3b4ca805d",
-    "after": "16dc4b1433f464ec6b621f5808e896adc0df7a47a31f1fd1590624559a8b6a2e",
-    "patch": "bootstrap-graphql-service-node-latency_mutation_utils.go.patch"
+  "graphql/query.go": {
+    "before": "e40cb3d1ec7a107ec80b300c4eb52a86ff2a37368a0d7a8036f2b1b5a608793f",
+    "after": "d3ed7a4ab5f87e2533364612057764db05ce227b90d4cd6d0f4026902811686d",
+    "patch": "upstream-20261015-graphql-query.go.patch"
+  },
+  "graphql/service/config/mutation_utils.go": {
+    "before": "7baf02706aeb01d96ce75bf9e7fd2882fe946f180ca725147d7d633c71b67acf",
+    "after": "222dfa2c287b040abc9e0c3f1314e8df7d08066d95f3f62ddab1003b5b374ec8",
+    "patch": "upstream-20261015-graphql-service-config-mutation_utils.go.patch"
+  },
+  "graphql/service/subscription/mutation_utils.go": {
+    "before": "2f2fc2dbb57720d27256a5b52046406404a8057150276ed40b2106f1d3a8dd17",
+    "after": "ec434e344e528cbc70af28b740e1c837d9bacadae51154dd9c649153a4f24957",
+    "patch": "upstream-20261015-graphql-service-subscription-mutation_utils.go.patch"
   }
 }

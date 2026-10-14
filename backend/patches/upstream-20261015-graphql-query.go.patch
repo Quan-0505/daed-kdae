@@ -1,0 +1,22 @@
+diff --git a/graphql/query.go b/graphql/query.go
+index 8efa1bd..bed9cb6 100644
+--- a/graphql/query.go
++++ b/graphql/query.go
+@@ -71,7 +71,16 @@ func getToken(
+ 		return "", err
+ 	}
+ 	if hashedPassword != m.PasswordHash {
+-		return "", fmt.Errorf("incorrect username or password")
++		if !verifyLegacyPassword(m.PasswordHash, password) {
++			return "", fmt.Errorf("incorrect username or password")
++		}
++		update := d.Model(&db.User{}).Where("id = ? AND password_hash = ? AND jwt_secret = ?", m.ID, m.PasswordHash, m.JwtSecret).Update("password_hash", hashedPassword)
++		if update.Error != nil {
++			return "", fmt.Errorf("unable to migrate password hash")
++		}
++		if update.RowsAffected != 1 {
++			return "", fmt.Errorf("account changed; retry login")
++		}
+ 	}
+ 
+ 	// File a token.

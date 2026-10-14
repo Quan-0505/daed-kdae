@@ -4,8 +4,8 @@
 
 ## 固定源码
 
-- dae-wing：`dc503088945812c11235b35362d2bfa1a4c3bdf0`
-- kdae：`f7c1cb6b04364903a55dbf9790d6e5eca7d5a628`
+- dae-wing：`b089b568649f03f909477adb6c7db25535a58782`
+- kdae：`eb510872ae9474b7fa55a7f1d252ffd79a937854`
 - GraphQL 前端来源与 MIT 许可见 [console/README.md](../console/README.md)。后端保持各上游许可。
 
 `patches/bootstrap-manifest.json` 固定 kdae API、依赖和生命周期适配；`console-manifest.json` 固定原生日志、流量、群组编辑、密码兼容与订阅维护补丁。安装器核对 SHA256，拒绝覆盖未知修改。
@@ -23,7 +23,7 @@ export PATH=/usr/local/go/bin:$PATH
 cd /absolute/path/to/wing
 make deps
 go test -race ./maintenance ./observability ./consoleapi ./graphql ./graphql/service/subscription
-make OUTPUT=/absolute/path/to/daed APPNAME=daed WEB_DIST=/absolute/path/to/daed-kdae/dist VERSION=v2.2.4-kdae bundle
+make OUTPUT=/absolute/path/to/daed APPNAME=daed WEB_DIST=/absolute/path/to/daed-kdae/dist VERSION=v2.2.5-kdae bundle
 ```
 
 `OUTPUT` 是二进制文件路径。`prepare-wing.py` 可以重复用于已准备的固定源码目录，不能用于任意上游版本。嵌入生产 `dist/` 后，使用 `packaging/build-release.sh` 生成静态 arm64、amd64-v2/v3 二进制及 DEB/APK v2；OpenWrt 25.12 APK v3 由 SDK 工作流转换。

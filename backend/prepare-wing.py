@@ -1,7 +1,7 @@
 """Prepare a pinned, clean dae-wing checkout for the sole Go console build."""
 import argparse,hashlib,json,pathlib,subprocess,sys
-WING='dc503088945812c11235b35362d2bfa1a4c3bdf0'
-CORE='f7c1cb6b04364903a55dbf9790d6e5eca7d5a628'
+WING='b089b568649f03f909477adb6c7db25535a58782'
+CORE='eb510872ae9474b7fa55a7f1d252ffd79a937854'
 base=pathlib.Path(__file__).resolve().parent
 
 def run(*args,cwd=None):subprocess.run(args,cwd=cwd,check=True)

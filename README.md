@@ -4,7 +4,9 @@ Go dae-wing + kdae eBPF 引擎，内嵌新版网络管理控制台。
 
 [简体中文](README.md) | [English](README.en.md) | [最新安装包](https://github.com/Quan-0505/daed-kdae/releases/latest)
 
-## v2.2.4-kdae
+## v2.2.5-kdae
+
+已同步最新 Go 上游：kdae `eb510872`（SNI 路由学习、DNS/UDP 修正）与 dae-wing `b089b568`（数据层和延迟测试修正）。保留连接的热重载及日志等功能经过隔离网络实测；详见 [更新与验证记录](backend/UPSTREAM-20261015.md)。
 
 新版控制台是唯一生产界面；旧皮肤压缩包、历史 REST 演示服务和过期安装资料已移除。首次访问默认浅粉 Rose，保留已有主题与语言偏好。
 
@@ -20,18 +22,18 @@ Go dae-wing + kdae eBPF 引擎，内嵌新版网络管理控制台。
 
 ## 安装包
 
-从 [v2.2.4-kdae Release](https://github.com/Quan-0505/daed-kdae/releases/tag/v2.2.4-kdae) 下载。
+从 [v2.2.5-kdae Release](https://github.com/Quan-0505/daed-kdae/releases/tag/v2.2.5-kdae) 下载。
 
 | 系统 / 设备 | 文件 |
 |---|---|
-| Debian / Ubuntu x86-64-v2 | `daed-kdae_2.2.4-linux-x86_64_v2_sse.deb` |
-| Debian / Ubuntu x86-64-v3 / AVX2 | `daed-kdae_2.2.4-linux-x86_64_v3_avx2.deb` |
+| Debian / Ubuntu x86-64-v2 | `daed-kdae_2.2.5-linux-x86_64_v2_sse.deb` |
+| Debian / Ubuntu x86-64-v3 / AVX2 | `daed-kdae_2.2.5-linux-x86_64_v3_avx2.deb` |
 | OpenWrt 25.12 R2S / R3S / R4S | `daed-kdae-r2s.apk` / `daed-kdae-r3s.apk` / `daed-kdae-r4s.apk` |
 | OpenWrt 25.12 x86_64 | `daed-kdae-x86.apk` |
 | 旧 APK 工具链 | 对应的 `*-v2.apk` 归档；先核对固件包格式 |
 
 ```sh
-sudo apt install ./daed-kdae_2.2.4-linux-x86_64_v2_sse.deb
+sudo apt install ./daed-kdae_2.2.5-linux-x86_64_v2_sse.deb
 sudo systemctl enable --now daed
 # OpenWrt 25.12：先上传到 /tmp，以下为 R4S 示例
 apk add --allow-untrusted /tmp/daed-kdae-r4s.apk
@@ -58,7 +60,7 @@ pnpm --dir console install --frozen-lockfile
 npm run build
 npm run check-types
 python3 backend/prepare-wing.py /absolute/path/to/wing --clone
-bash packaging/build-release.sh /absolute/path/to/wing "$PWD/dist" /absolute/path/to/output 2.2.4
+bash packaging/build-release.sh /absolute/path/to/wing "$PWD/dist" /absolute/path/to/output 2.2.5
 ```
 
 需要 Node.js 24、pnpm 10.24、Go 1.26、clang/LLVM、make、Python 3、dpkg-deb、curl。生产输出 `dist/`；`npm run dev:mock` 仅供虚构数据预览。详见 [前端说明](console/README.md) 和 [后端说明](backend/README.md)。APK v3 使用 `repack-apk-v3.yml` 工作流生成。
@@ -66,7 +68,7 @@ bash packaging/build-release.sh /absolute/path/to/wing "$PWD/dist" /absolute/pat
 ## 上游与许可
 
 - 前端：[ksong008/daed](https://github.com/ksong008/daed)，固定 `4a519fcbaa7004e50e80a309c68d6811596468cf`，保留 MIT [许可](console/LICENSE)。布局参考 [DaeNext](https://github.com/ksong008/DaeNext)。
-- 控制器：[dae-wing](https://github.com/daeuniverse/dae-wing)，固定 `dc503088945812c11235b35362d2bfa1a4c3bdf0`。
-- 引擎：[kdae](https://github.com/olicesx/dae/tree/kdae)，固定 `f7c1cb6b04364903a55dbf9790d6e5eca7d5a628`。
+- 控制器：[dae-wing](https://github.com/daeuniverse/dae-wing)，固定 `b089b568649f03f909477adb6c7db25535a58782`。
+- 引擎：[kdae](https://github.com/olicesx/dae/tree/kdae)，固定 `eb510872ae9474b7fa55a7f1d252ffd79a937854`。
 
 引擎延续已验证的分阶段 TC hook / routing epoch 热重载适配；不自动跟随上游更新。后端遵循 [AGPL-3.0](LICENSE)，各组件保留原有版权及许可。
