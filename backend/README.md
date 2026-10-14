@@ -37,7 +37,7 @@ make OUTPUT=/absolute/path/to/daed APPNAME=daed WEB_DIST=/absolute/path/to/daed-
 - Rust Argon2 账户首次成功登录后转换 Go 哈希；迁移保留账户 ID 和 JWT secret。
 - dae / Go JSON 资源备份。备份含节点和订阅凭据，应自行妥善保管，不提交到 Git。
 
-已在 Debian 13 / Linux 6.12 的两台设备实测安装、登录、浏览器界面、三次热重载、DNS/联网、重启和日志；隔离网络还验证了真实 TCP/UDP 转发、长连接和错误候选配置被拒绝后旧引擎继续运行。APK 包结构与架构验证不等于 OpenWrt 真机安装验证。现有 kdae 在退出阶段可能出现 conn_state_map 清理日志，运行与重载验证未因此失败。
+v2.2.4 及之前已在 Debian 13 / Linux 6.12 的两台设备实测安装、登录、浏览器界面、三次热重载、DNS/联网、重启和日志；隔离网络还验证了真实 TCP/UDP 转发、长连接和错误候选配置被拒绝后旧引擎继续运行。APK 包结构与架构验证不等于 OpenWrt 真机安装验证。现有 kdae 在退出阶段可能出现 conn_state_map 清理日志，运行与重载验证未因此失败。
 
 ## Rust 数据迁移
 
@@ -54,3 +54,5 @@ python3 -m unittest discover -s backend/tests -p 'test_*.py'
 ## Native DNS listener reload handoff
 
 A configured `dns.bind` owns separate UDP/TCP sockets. The staged tproxy listener clone does not release that bind. Reload now stops the previous native DNS listener immediately before activating the candidate; rejection closes the candidate and restarts the previous DNS listener. The previous routing plane and established sessions remain alive during preparation. This prevents valid geodata updates from being rolled back solely because a native DNS port is occupied. A real-socket regression covers the collision, handoff and rollback. Backend CI also uploads a source-identified ARM64 binary for device validation.
+
+本次 v2.2.5 的全新源码/race 测试与隔离网络实测见 [上游更新记录](UPSTREAM-20261015.md)。

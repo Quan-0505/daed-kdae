@@ -49,7 +49,7 @@ apk add --allow-untrusted /tmp/daed-kdae-r4s.apk
 
 需要 Linux x86_64 / arm64、root、BTF 和匹配的数据面内核功能（veth、clsact / TC BPF；Netkit 路径需 Netkit）。不能仅凭内核版本号判断兼容性。
 
-已在两台 Debian 13 / Linux 6.12 设备验证安装、登录、新界面、三次重载、DNS/联网、重启和日志；隔离网络还验证 TCP/UDP 代理转发、长连接和错误候选拒绝后旧引擎继续运行。APK 格式、静态链接、架构及内层二进制检查不代表 OpenWrt 真机验证。
+v2.2.4 及之前已在两台 Debian 13 / Linux 6.12 设备验证安装、登录、新界面、三次重载、DNS/联网、重启和日志；隔离网络还验证 TCP/UDP 代理转发、长连接和错误候选拒绝后旧引擎继续运行。v2.2.5 在构建机的隔离网络中验证三次真实 eBPF 热重载、持续 TCP/UDP 流量和实时日志，并通过全新源码构建与 race 测试。APK 格式、静态链接、架构及内层二进制检查不代表 OpenWrt 真机验证。
 
 流量图来自代理会话统计，不等于网卡全部流量；进程时长不等于引擎时长。现有引擎退出时可能出现 conn_state_map 清理日志，见 [后端说明](backend/README.md)。
 

@@ -38,7 +38,7 @@ bash packaging/build-release.sh /absolute/path/to/wing "$PWD/dist" /absolute/pat
 
 Requires Node.js 24, pnpm 10.24, Go 1.26, Python 3, clang/LLVM, make, curl and dpkg-deb. Production output is `dist/`. `npm run dev:mock` uses fictional fixtures. The SDK workflow converts APK payloads into OpenWrt 25.12 APK v3.
 
-Two Debian 13/Linux 6.12 installations passed login, UI, three reloads, DNS/connectivity, restart and logging checks. Isolated tests covered proxy TCP/UDP, long transfers and rejected candidate configurations preserving the running engine. Package format/architecture/hash checks do not establish OpenWrt hardware compatibility. Traffic metrics measure proxy sessions, not total interface traffic. Existing engine shutdown may log conn_state_map cleanup errors; see [backend details](backend/README.md).
+Earlier v2.2.4 builds on two Debian 13/Linux 6.12 installations passed login, UI, three reloads, DNS/connectivity, restart and logging checks. Isolated tests covered proxy TCP/UDP, long transfers and rejected candidate configurations preserving the running engine. For v2.2.5, fresh builds, race tests and three real eBPF reloads with persistent TCP/UDP and live logs passed in an isolated build-host network. Package format/architecture/hash checks do not establish OpenWrt hardware compatibility. Traffic metrics measure proxy sessions, not total interface traffic. Existing engine shutdown may log conn_state_map cleanup errors; see [backend details](backend/README.md).
 
 Requires root, BTF and suitable TC/eBPF kernel capabilities. Netkit mode requires Netkit support.
 
