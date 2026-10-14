@@ -18,7 +18,11 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOAMD64=v2 go build -tags=embedallowed -tr
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOAMD64=v3 go build -tags=embedallowed -trimpath -ldflags="$ldf" -o "$out/bin/daed-amd64-v3" .
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags=embedallowed -trimpath -ldflags="$ldf" -o "$out/bin/daed-arm64" .
 for kind in geosite geoip; do
- curl -fL --retry 3 "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/$kind.dat" -o "$out/geo/$kind.dat"
+ source="https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/$kind.dat"
+ fallback="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/$kind.dat"
+ curl -fsSL --connect-timeout 15 --max-time 120 --retry 2 "$source" -o "$out/geo/$kind.dat.part" || \
+   curl -fsSL --connect-timeout 15 --max-time 120 --retry 2 "$fallback" -o "$out/geo/$kind.dat.part"
+ mv "$out/geo/$kind.dat.part" "$out/geo/$kind.dat"
 done
 python3 "$repo/packaging/package-release.py" "$out" "$version"
 file "$out"/bin/*
