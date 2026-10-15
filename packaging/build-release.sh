@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Usage: build-release.sh /absolute/wing /absolute/production-dist /absolute/output [2.2.5]
+# Usage: build-release.sh /absolute/wing /absolute/production-dist /absolute/output [2.2.6]
 wing=$(realpath "$1")
 web=$(realpath "$2")
 out=$(realpath -m "$3")
-version=${4:-2.2.5}
+version=${4:-2.2.6}
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid version'; exit 1; }
 repo=$(cd "$(dirname "$0")/.." && pwd)
 mkdir -p "$out/bin" "$out/geo"

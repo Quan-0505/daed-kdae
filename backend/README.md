@@ -23,7 +23,7 @@ export PATH=/usr/local/go/bin:$PATH
 cd /absolute/path/to/wing
 make deps
 go test -race ./maintenance ./observability ./consoleapi ./graphql ./graphql/service/subscription
-make OUTPUT=/absolute/path/to/daed APPNAME=daed WEB_DIST=/absolute/path/to/daed-kdae/dist VERSION=v2.2.5-kdae bundle
+make OUTPUT=/absolute/path/to/daed APPNAME=daed WEB_DIST=/absolute/path/to/daed-kdae/dist VERSION=v2.2.6-kdae bundle
 ```
 
 `OUTPUT` 是二进制文件路径。`prepare-wing.py` 可以重复用于已准备的固定源码目录，不能用于任意上游版本。嵌入生产 `dist/` 后，使用 `packaging/build-release.sh` 生成静态 arm64、amd64-v2/v3 二进制及 DEB/APK v2；OpenWrt 25.12 APK v3 由 SDK 工作流转换。
@@ -55,4 +55,4 @@ python3 -m unittest discover -s backend/tests -p 'test_*.py'
 
 A configured `dns.bind` owns separate UDP/TCP sockets. The staged tproxy listener clone does not release that bind. Reload now stops the previous native DNS listener immediately before activating the candidate; rejection closes the candidate and restarts the previous DNS listener. The previous routing plane and established sessions remain alive during preparation. This prevents valid geodata updates from being rolled back solely because a native DNS port is occupied. A real-socket regression covers the collision, handoff and rollback. Backend CI also uploads a source-identified ARM64 binary for device validation.
 
-本次 v2.2.5 的全新源码/race 测试与隔离网络实测见 [上游更新记录](UPSTREAM-20261015.md)。
+v2.2.5 的全新源码/race 测试与隔离网络实测见 [上游更新记录](UPSTREAM-20261015.md)。

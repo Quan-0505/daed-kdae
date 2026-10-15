@@ -16,11 +16,11 @@ on:
       tag:
         description: 存放 v2 apk 的 release tag
         required: true
-        default: v2.2.5-kdae
+        default: v2.2.6-kdae
       version:
         description: 打包用的版本号（PKG_VERSION）
         required: true
-        default: '2.2.5'
+        default: '2.2.6'
       release:
         description: 使用的 OpenWrt 稳定版分支（取该分支最新小版本）
         required: true

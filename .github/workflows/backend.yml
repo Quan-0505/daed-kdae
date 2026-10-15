@@ -39,8 +39,8 @@ jobs:
       - name: Build verified ARM64 console for router validation
         working-directory: ${{ runner.temp }}/wing
         run: |
-          CGO_ENABLED=0 make OUTPUT="$RUNNER_TEMP/daed" APPNAME=daed WEB_DIST="$GITHUB_WORKSPACE/dist" VERSION="v2.2.5-kdae" bundle
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags=embedallowed -trimpath -ldflags="-s -w -X github.com/daeuniverse/dae-wing/db.AppVersion=v2.2.5-kdae -X github.com/daeuniverse/dae-wing/db.AppName=daed" -o "$RUNNER_TEMP/daed-arm64" .
+          CGO_ENABLED=0 make OUTPUT="$RUNNER_TEMP/daed" APPNAME=daed WEB_DIST="$GITHUB_WORKSPACE/dist" VERSION="v2.2.6-kdae" bundle
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags=embedallowed -trimpath -ldflags="-s -w -X github.com/daeuniverse/dae-wing/db.AppVersion=v2.2.6-kdae -X github.com/daeuniverse/dae-wing/db.AppName=daed" -o "$RUNNER_TEMP/daed-arm64" .
           sha256sum "$RUNNER_TEMP/daed-arm64" > "$RUNNER_TEMP/daed-arm64.sha256"
           printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/source-commit.txt"
       - uses: actions/upload-artifact@v4
