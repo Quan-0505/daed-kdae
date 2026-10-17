@@ -1,0 +1,21 @@
+--- a/control/bpf_utils.go
++++ b/control/bpf_utils.go
+@@ -149,7 +149,17 @@
+ 	}
+ 
+ 	if !simulate {
+-		// Genuine BpfMapBatchUpdate
++		if m.Type() == ebpf.LPMTrie && opts != nil && opts.ElemFlags == uint64(ebpf.UpdateAny) {
++			vKeys, vValues := reflect.ValueOf(keys), reflect.ValueOf(values)
++			if vKeys.Kind() != reflect.Slice || vValues.Kind() != reflect.Slice || vKeys.Len() != vValues.Len() {
++				return 0, fmt.Errorf("LPM keys and values must be slices of equal length")
++			}
++			return retryLPMBatch(vKeys.Len(), func() (int, error) {
++				return m.BatchUpdate(keys, values, opts)
++			}, func(i int) error {
++				return m.Update(vKeys.Index(i).Interface(), vValues.Index(i).Interface(), ebpf.UpdateAny)
++			})
++		}
+ 		return m.BatchUpdate(keys, values, opts)
+ 	}
+ 

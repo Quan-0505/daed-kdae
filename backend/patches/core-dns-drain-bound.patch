@@ -1,0 +1,41 @@
+--- a/control/dns_listener.go
++++ b/control/dns_listener.go
+@@ -237,28 +237,28 @@
+ 	// Stop UDP server
+ 	if d.udpServer != nil {
+ 		ctx, cancel := context.WithTimeout(context.Background(), dnsListenerShutdownTimeout)
+-		if err := d.udpServer.ShutdownContext(ctx); err != nil {
++		if err := stopDNSBind(ctx, d.udpServer.ShutdownContext, func() error {
++			if d.udpConn == nil { return nil }
++			return d.udpConn.Close()
++		}); err != nil {
+ 			errs = append(errs, err)
+ 		}
+ 		cancel()
+-		if d.udpConn != nil {
+-			_ = d.udpConn.Close()
+-			d.udpConn = nil
+-		}
++		d.udpConn = nil
+ 		d.udpServer = nil
+ 	}
+ 
+ 	// Stop TCP server
+ 	if d.tcpServer != nil {
+ 		ctx, cancel := context.WithTimeout(context.Background(), dnsListenerShutdownTimeout)
+-		if err := d.tcpServer.ShutdownContext(ctx); err != nil {
++		if err := stopDNSBind(ctx, d.tcpServer.ShutdownContext, func() error {
++			if d.tcpLn == nil { return nil }
++			return d.tcpLn.Close()
++		}); err != nil {
+ 			errs = append(errs, err)
+ 		}
+ 		cancel()
+-		if d.tcpLn != nil {
+-			_ = d.tcpLn.Close()
+-			d.tcpLn = nil
+-		}
++		d.tcpLn = nil
+ 		d.tcpServer = nil
+ 	}
+ 

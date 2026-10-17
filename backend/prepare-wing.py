@@ -31,5 +31,6 @@ def main():
   patch=base/'patches'/item['patch'];run('git','apply','--check',str(patch),cwd=wing);patches.append(patch)
  for patch in patches:run('git','apply',str(patch),cwd=wing)
  run(sys.executable,str(base/'apply-console-features.py'),str(wing))
+ run(sys.executable,str(base/'apply-core-fixes.py'),str(wing/'dae-core'))
  print('Pinned wing/kdae source prepared. Build only with the production dist/.')
 if __name__=='__main__':main()
