@@ -1,0 +1,12 @@
+--- a/dae/run.go
++++ b/dae/run.go
+@@ -116,6 +116,9 @@
+ 	runDone := make(chan struct{})
+ 	defer close(runDone)
+ 	reportExit := func(plane *control.ControlPlane, err error) {
++		if err != nil {
++			log.WithError(err).Errorln("[Serve] Control plane stopped")
++		}
+ 		select {
+ 		case serveExits <- serveExit{plane, err}:
+ 		case <-runDone:

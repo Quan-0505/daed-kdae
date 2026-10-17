@@ -56,3 +56,13 @@ python3 -m unittest discover -s backend/tests -p 'test_*.py'
 A configured `dns.bind` owns separate UDP/TCP sockets. The staged tproxy listener clone does not release that bind. Reload now stops the previous native DNS listener immediately before activating the candidate; rejection closes the candidate and restarts the previous DNS listener. The previous routing plane and established sessions remain alive during preparation. This prevents valid geodata updates from being rolled back solely because a native DNS port is occupied. A real-socket regression covers the collision, handoff and rollback. Backend CI also uploads a source-identified ARM64 binary for device validation.
 
 v2.2.5 的全新源码/race 测试与隔离网络实测见 [上游更新记录](UPSTREAM-20261015.md)。
+
+## E5 的 LPM 批量写入兼容
+
+E5 的 Linux 6.18 实测可能在只有 12 条记录的 LPM 批量写入中返回
+`ENOMEM`，使完整配置被拒绝，原引擎回退到直连配置。
+`core-manifest.json` 和 `apply-core-fixes.py` 对固定 core 源码做哈希校验后，
+安装兼容补丁：仅对 LPM 的 `UpdateAny` 批量写入遇到 `ENOMEM` 时逐条重试。
+已成功的部分可以安全重复；其他错误与逐条写入失败仍向上传递，不发布不完整路由表。
+`go test ./control -run TestLPMBatch` 覆盖部分成功、错误保留和重试失败。
+失败候选控制平面的具体错误也会写入控制台日志，便于诊断。
